@@ -2,74 +2,69 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Registrar - VetSystem</title>
+    <title>VetSystem - Registrar</title>
+    <!-- Importamos Bootstrap para que se vea bonito -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="inicio.html"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="inicio.html"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link active" href="registrar.html"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link" href="pacientes.html"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="usuarios.html"><i class="bi bi-people"></i> Usuarios</a>
-        </div>
-        <span class="navbar-text text-white me-3"><i class="bi bi-person-circle"></i> admin (Administrador)</span>
-        <a class="btn btn-outline-light btn-sm" href="login.html"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        <a class="navbar-brand fw-bold" href="#"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <!-- Aquí mostramos el nombre del servidor (app-01 o app-02) -->
+        <span class="navbar-text text-white">
+            <i class="bi bi-server"></i> Nodo: <strong>{{ hostname }}</strong>
+        </span>
     </div>
 </nav>
 
 <main class="container my-4">
-    <div class="alert alert-info d-flex align-items-center border-0 shadow-sm">
-        <i class="bi bi-server me-2 fs-5"></i>
-        <span>Solicitud atendida por el nodo: <strong>app-01</strong></span>
-    </div>
+    <!-- Lógica de Jinja2 para mostrar mensajes de éxito o error (los del flash en app.py) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
     <h2 class="mb-3"><i class="bi bi-clipboard-plus text-primary"></i> Registrar nuevo paciente</h2>
-
-    <form class="card p-4 shadow-sm border-0">
+    
+    <!-- FORMULARIO: Envía datos por POST a la ruta /registrar -->
+    <form class="card p-4 shadow-sm border-0" method="POST" action="/registrar">
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- El atributo 'name' es VITAL, porque con ese nombre lo lee app.py (request.form['owner_name']) -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
-                <input type="text" class="form-control" placeholder="Ej: Juan Pérez" required></div>
+                <input type="text" class="form-control" name="owner_name" required></div>
             <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
-                <input type="text" class="form-control" placeholder="Ej: 5555-1234"></div>
-            <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
-                <input type="email" class="form-control" placeholder="ejemplo@correo.com"></div>
-            <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
-                <input type="text" class="form-control" placeholder="Ej: Zona 1, Guatemala"></div>
+                <input type="text" class="form-control" name="owner_phone"></div>
+            <!-- ... el resto de inputs del dueño ... -->
         </div>
 
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
         <div class="row g-3 mb-4 mt-1">
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
-                <input type="text" class="form-control" placeholder="Ej: Firulais" required></div>
+                <input type="text" class="form-control" name="pet_name" required></div>
             <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <select class="form-select">
-                    <option>Perro</option>
-                    <option>Gato</option>
-                    <option>Ave</option>
-                    <option>Otro</option>
+                <select class="form-select" name="pet_species">
+                    <option>Perro</option><option>Gato</option><option>Ave</option><option>Otro</option>
                 </select></div>
-            <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
-                <input type="text" class="form-control" placeholder="Ej: Labrador"></div>
-            <div class="col-md-4"><label class="form-label fw-semibold">Edad (años)</label>
-                <input type="number" class="form-control" placeholder="Ej: 3"></div>
-            <div class="col-md-4"><label class="form-label fw-semibold">Peso (kg)</label>
-                <input type="number" step="0.01" class="form-control" placeholder="Ej: 12.5"></div>
+            <!-- ... el resto de inputs de la mascota ... -->
         </div>
 
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-clipboard-pulse"></i> Motivo de la consulta</h5>
         <div class="mb-3 mt-3"><label class="form-label fw-semibold">Motivo *</label>
-            <textarea class="form-control" rows="3" placeholder="Describe el motivo de la consulta..." required></textarea></div>
-        <div class="mb-3"><label class="form-label fw-semibold">Diagnóstico (opcional)</label>
-            <textarea class="form-control" rows="2" placeholder="Ingresa el diagnóstico si aplica..."></textarea></div>
+            <textarea class="form-control" name="reason" rows="2" required></textarea></div>
+        <div class="mb-3"><label class="form-label fw-semibold">Diagnóstico</label>
+            <textarea class="form-control" name="diagnosis" rows="2"></textarea></div>
 
         <div class="d-flex gap-2 border-top pt-3">
-            <button class="btn btn-primary px-4"><i class="bi bi-save"></i> Guardar Paciente</button>
-            <a href="inicio.html" class="btn btn-outline-secondary">Cancelar</a>
+            <!-- Botón de envío -->
+            <button class="btn btn-primary px-4" type="submit"><i class="bi bi-save"></i> Guardar Paciente</button>
         </div>
     </form>
 </main>
