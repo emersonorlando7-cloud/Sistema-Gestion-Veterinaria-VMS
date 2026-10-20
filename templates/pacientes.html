@@ -16,7 +16,11 @@
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
         </div>
-        <span class="navbar-text text-white"><i class="bi bi-server"></i> Nodo: <strong>{{ hostname }}</strong></span>
+        <div class="d-flex align-items-center text-white">
+            <!-- Muestra el nombre del usuario logueado y su rol -->
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
     </div>
 </nav>
 
@@ -31,23 +35,30 @@
                         <th>Mascota</th>
                         <th>Especie</th>
                         <th>Dueño</th>
-                        <th>Teléfono</th>
+                        <th>Nodo</th>
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Bucle Jinja2: Recorre los datos enviados desde Python -->
+                    <!-- Bucle Jinja2 para recorrer la lista de pacientes desde Python -->
                     {% for pet, owner in pacientes %}
                     <tr>
                         <td class="text-muted">#{{ pet.id }}</td>
                         <td><i class="bi bi-github text-primary"></i> <strong>{{ pet.name }}</strong></td>
                         <td>{{ pet.species }}</td>
                         <td>{{ owner.name }}</td>
-                        <td>{{ owner.phone or 'N/A' }}</td>
+                        <td><span class="badge bg-secondary">{{ hostname }}</span></td>
+                        <td class="text-end">
+                            <!-- VALIDACIÓN DE PERMISOS: Solo el admin ve el botón de eliminar -->
+                            {% if session.get('role') == 'admin' %}
+                            <a href="{{ url_for('eliminar_paciente', id=pet.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar paciente?')"><i class="bi bi-trash"></i></a>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
-                    <!-- Se muestra si la tabla está vacía -->
+                    <!-- Mensaje si la tabla está vacía -->
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">No hay pacientes registrados aún.</td>
+                        <td colspan="6" class="text-center text-muted py-4">No hay pacientes registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
