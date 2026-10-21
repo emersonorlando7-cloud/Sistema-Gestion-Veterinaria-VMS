@@ -1,38 +1,30 @@
-# ==============================================================================
-# 1. IMPORTACIÓN DE LIBRERÍAS
-# ==============================================================================
+# 1. IMPORTACIONES
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import socket
 
-# ==============================================================================
-# 2. CONFIGURACIÓN INICIAL
-# ==============================================================================
 app = Flask(__name__)
-app.secret_key = 'clave_secreta_vetsystem_segura' # Necesario para las sesiones
+app.secret_key = 'clave_secreta_vetsystem_segura'
 
-# Conexión a MySQL a través de HAProxy (192.168.56.10)
+# 2. CONEXIÓN A BASE DE DATOS A TRAVÉS DE HAPROXY
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# --- SOLUCIÓN AL ERROR 2013 (Pérdida de conexión) ---
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 280      # Recicla conexiones inactivas
-app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20       # Tiempo de espera máximo
-app.config['SQLALCHEMY_POOL_PRE_PING'] = True    # Verifica que la conexión siga viva antes de usarla
+# SOLUCIÓN AL ERROR 2013: Configuraciones para evitar que MySQL cierre la conexión por inactividad
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 280
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20
+app.config['SQLALCHEMY_POOL_PRE_PING'] = True
 
 db = SQLAlchemy(app)
 
-# ==============================================================================
-# 3. MODELOS (Tablas de la Base de Datos)
-# ==============================================================================
+# 3. MODELOS (Tablas)
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False) # admin, sistemas, veterinario, etc.
+    role = db.Column(db.String(50), nullable=False)
 
 class Owner(db.Model):
     __tablename__ = 'owners'
@@ -45,7 +37,7 @@ class Owner(db.Model):
 class Pet(db.Model):
     __tablename__ = 'pets'
     id = db.Column(db.Integer, primary_key=True)
-    owner_id = db.Column(db.Integer, db.ForeignKey('owners.id')) # Relación con dueño
+    owner_id = db.Column(db.Integer, db.ForeignKey('owners.id')) # Enlaza al dueño
     name = db.Column(db.String(100), nullable=False)
     species = db.Column(db.String(50))
     breed = db.Column(db.String(50))
@@ -55,15 +47,12 @@ class Pet(db.Model):
 class Consultation(db.Model):
     __tablename__ = 'consultations'
     id = db.Column(db.Integer, primary_key=True)
-    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id')) # Relación con mascota
+    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id')) # Enlaza a la mascota
     reason = db.Column(db.Text)
     diagnosis = db.Column(db.Text)
     consultation_date = db.Column(db.DateTime, server_default=db.func.now())
 
-# ==============================================================================
-# 4. CREACIÓN AUTOMÁTICA DEL ADMINISTRADOR
-# ==============================================================================
-# Al arrancar la app, se conecta a la BD y crea el usuario 'emerson_7' si no existe.
+# 4. CREACIÓN DEL USUARIO ADMIN (Si no existe)
 with app.app_context():
     try:
         db.create_all()
@@ -74,10 +63,7 @@ with app.app_context():
     except Exception as e:
         print(f"Error al crear usuario inicial: {e}")
 
-# ==============================================================================
-# 5. SEGURIDAD (Decorador)
-# ==============================================================================
-# Protege las rutas. Si no hay sesión, redirige al login.
+# 5. SEGURIDAD: Decorador para proteger rutas
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -87,11 +73,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ==============================================================================
-# 6. RUTAS DE LA APLICACIÓN
-# ==============================================================================
-
-# --- LOGIN ---
+# 6. RUTAS
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -110,13 +92,11 @@ def login():
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
 
-# --- LOGOUT ---
 @app.route('/logout')
 def logout():
-    session.clear() # Borra la sesión
+    session.clear()
     return redirect(url_for('login'))
 
-# --- INICIO ---
 @app.route('/')
 @login_required
 def index():
@@ -133,7 +113,6 @@ def inicio():
         total_duenos = 0
     return render_template('inicio.html', hostname=socket.gethostname(), total_pacientes=total_pacientes, total_duenos=total_duenos)
 
-# --- REGISTRAR PACIENTE ---
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
 def registrar_paciente():
@@ -141,8 +120,10 @@ def registrar_paciente():
         try:
             owner = Owner(name=request.form['owner_name'], phone=request.form.get('owner_phone'), email=request.form.get('owner_email'), address=request.form.get('owner_address'))
             db.session.add(owner)
-            db.session.flush() # Obtiene el ID del dueño sin confirmar aún
-            pet = Pet(owner_id=owner.id, name=request.form['pet_name'], species=request.form.get('pet_species'), breed=request.form.get('pet_breed'), age=request.form.get('pet_age'), weight=request.form.get('pet_weight'))
+            db.session.flush() # Obtiene el ID del dueño
+            
+            # SOLUCIÓN AL ERROR 500: "or None" evita que campos vacíos rompan la BD
+            pet = Pet(owner_id=owner.id, name=request.form['pet_name'], species=request.form.get('pet_species'), breed=request.form.get('pet_breed'), age=request.form.get('pet_age') or None, weight=request.form.get('pet_weight') or None)
             db.session.add(pet)
             db.session.commit()
             flash('Paciente registrado exitosamente!', 'success')
@@ -152,7 +133,6 @@ def registrar_paciente():
             flash(f'Error al registrar: {str(e)}', 'danger')
     return render_template('index.html', hostname=socket.gethostname())
 
-# --- LISTA DE PACIENTES ---
 @app.route('/pacientes')
 @login_required
 def pacientes():
@@ -162,7 +142,6 @@ def pacientes():
         lista = []
     return render_template('pacientes.html', pacientes=lista, hostname=socket.gethostname())
 
-# --- EDITAR PACIENTE ---
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_paciente(id):
@@ -179,8 +158,9 @@ def editar_paciente(id):
             pet.name = request.form['pet_name']
             pet.species = request.form.get('pet_species')
             pet.breed = request.form.get('pet_breed')
-            pet.age = request.form.get('pet_age')
-            pet.weight = request.form.get('pet_weight')
+            # SOLUCIÓN AL ERROR 500 AL EDITAR: Se usa "or None" por si dejan los campos vacíos
+            pet.age = request.form.get('pet_age') or None
+            pet.weight = request.form.get('pet_weight') or None
             
             db.session.commit()
             flash('Paciente actualizado correctamente!', 'success')
@@ -191,7 +171,6 @@ def editar_paciente(id):
             
     return render_template('editar_paciente.html', pet=pet, owner=owner, hostname=socket.gethostname())
 
-# --- ELIMINAR PACIENTE ---
 @app.route('/paciente/eliminar/<int:id>')
 @login_required
 def eliminar_paciente(id):
@@ -202,11 +181,20 @@ def eliminar_paciente(id):
         pet = Pet.query.get_or_404(id)
         owner = Owner.query.get(pet.owner_id)
         
-        # IMPORTANTE: Borrar consultas asociadas primero para evitar error de llave foránea
+        # SOLUCIÓN AL ERROR DE LLAVE FORÁNEA:
+        # 1. Borra las consultas asociadas
         Consultation.query.filter_by(pet_id=pet.id).delete()
         
+        # 2. El comando flush() fuerza a la BD a aplicar el borrado de consultas inmediatamente
+        db.session.flush()
+        
+        # 3. Ahora sí, borra la mascota
         db.session.delete(pet)
+        db.session.flush()
+        
+        # 4. Finalmente borra al dueño
         db.session.delete(owner)
+        
         db.session.commit()
         flash('Paciente eliminado.', 'success')
     except Exception as e:
@@ -214,7 +202,6 @@ def eliminar_paciente(id):
         flash(f'Error al eliminar: {str(e)}', 'danger')
     return redirect(url_for('pacientes'))
 
-# --- LISTA Y CREACIÓN DE USUARIOS ---
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
 def usuarios():
@@ -242,7 +229,6 @@ def usuarios():
         lista_users = []
     return render_template('usuarios.html', usuarios=lista_users, hostname=socket.gethostname())
 
-# --- EDITAR USUARIO ---
 @app.route('/usuario/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_usuario(id):
@@ -267,11 +253,10 @@ def editar_usuario(id):
             return redirect(url_for('usuarios'))
         except Exception:
             db.session.rollback()
-            flash('Error al actualizar (el nombre de usuario ya está en uso?).', 'danger')
+            flash('Error al actualizar el usuario.', 'danger')
             
     return render_template('editar_usuario.html', user=user, hostname=socket.gethostname())
 
-# --- ELIMINAR USUARIO ---
 @app.route('/usuario/eliminar/<int:id>')
 @login_required
 def eliminar_usuario(id):
@@ -279,7 +264,7 @@ def eliminar_usuario(id):
         flash('Acceso denegado.', 'danger')
         return redirect(url_for('usuarios'))
 
-    # Evitar que el usuario logueado se borre a sí mismo
+    # Protección para no eliminarse a sí mismo
     if id == session.get('user_id'):
         flash('No puedes eliminar tu propio usuario activo.', 'warning')
         return redirect(url_for('usuarios'))
@@ -295,8 +280,5 @@ def eliminar_usuario(id):
 
     return redirect(url_for('usuarios'))
 
-# ==============================================================================
-# 7. ARRANQUE DEL SERVIDOR
-# ==============================================================================
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False) # debug=False para producción
