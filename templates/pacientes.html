@@ -16,7 +16,6 @@
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
         </div>
-        <!-- Muestra el nombre y rol del usuario logueado -->
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
@@ -25,7 +24,6 @@
 </nav>
 
 <main class="container my-4">
-    <!-- Alertas de éxito o error -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -46,7 +44,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Recorre la lista de pacientes -->
                     {% for pet, owner in pacientes %}
                     <tr>
                         <td class="text-muted">#{{ pet.id }}</td>
@@ -55,11 +52,12 @@
                         <td>{{ owner.name }}</td>
                         <td><span class="badge bg-secondary">{{ hostname }}</span></td>
                         <td class="text-end">
-                            <!-- Botón de Editar -->
+                            <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
                             <a href="{{ url_for('editar_paciente', id=pet.id) }}" class="btn btn-sm btn-warning">
                                 <i class="bi bi-pencil"></i> Editar
                             </a>
-                            <!-- Botón de Eliminar: Solo visible para admin y sistemas -->
                             {% if session.get('role') in ['admin', 'sistemas'] %}
                             <a href="{{ url_for('eliminar_paciente', id=pet.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar paciente y todas sus consultas?')">
                                 <i class="bi bi-trash"></i> Eliminar
