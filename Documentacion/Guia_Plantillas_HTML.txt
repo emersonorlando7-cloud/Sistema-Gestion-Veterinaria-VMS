@@ -1,0 +1,587 @@
+═══════════════════════════════════════════════════════════════════════
+   CÓDIGO FUENTE: PLANTILLAS HTML (CARPETA TEMPLATES)
+   Proyecto: VetSystem - Alta Disponibilidad
+═══════════════════════════════════════════════════════════════════════
+
+NOTA IMPORTANTE: 
+Las plantillas HTML usan Bootstrap 5 para los estilos y Jinja2 (el motor de plantillas de Flask).
+Jinja2 usa {{ variable }} para imprimir datos de Python y {% instrucción %} para lógica (bucles, condicionales).
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/login.html (Pantalla de Inicio de Sesión)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Login - VetSystem</title>
+    <!-- Importación de Bootstrap para el diseño visual -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Centra la tarjeta de login en el medio de la pantalla */
+        body { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); min-height: 100vh; display: flex; align-items: center; }
+        .login-card { max-width: 400px; margin: auto; }
+    </style>
+</head>
+<body>
+    <div class="card login-card shadow-lg border-0 rounded-4">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <i class="bi bi-heart-pulse fs-1 text-primary"></i>
+                <h3 class="fw-bold mt-2">VetSystem</h3>
+            </div>
+            
+            <!-- Muestra el mensaje rojo si el usuario o contraseña están mal -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} p-2 text-center">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            
+            <!-- Formulario que envía datos (POST) a la ruta /login -->
+            <form method="POST" action="/login">
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <!-- El atributo 'name' coincide con request.form['username'] en Python -->
+                    <input type="text" class="form-control" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/inicio.html (Panel de Control / Dashboard)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Inicio - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Menú superior (Navbar) -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <!-- url_for genera las rutas automáticamente en base a la función de Python -->
+            <a class="nav-link active" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+        </div>
+        <!-- Muestra si estamos en app-01 o app-02 -->
+        <span class="navbar-text text-white"><i class="bi bi-server"></i> Nodo: <strong>{{ hostname }}</strong></span>
+    </div>
+</nav>
+
+<main class="container my-4">
+    <h2 class="mb-4"><i class="bi bi-speedometer2 text-primary"></i> Panel de Control</h2>
+    <div class="row g-3 mb-4">
+        <!-- Tarjeta 1: Total Pacientes -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Total Pacientes</p>
+                        <!-- Imprime la variable enviada desde app.py -->
+                        <h3 class="mb-0 fw-bold">{{ total_pacientes }}</h3>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                        <i class="bi bi-heart-pulse fs-4 text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Tarjeta 2: Total Dueños -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Total Dueños</p>
+                        <h3 class="mb-0 fw-bold">{{ total_duenos }}</h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                        <i class="bi bi-people fs-4 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Tarjeta 3: Consultas Totales -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Consultas Totales</p>
+                        <h3 class="mb-0 fw-bold">{{ total_consultas }}</h3>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                        <i class="bi bi-calendar-check fs-4 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/index.html (Formulario de Registro)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>VetSystem - Registrar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link active" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+        </div>
+        <span class="navbar-text text-white"><i class="bi bi-server"></i> Nodo: <strong>{{ hostname }}</strong></span>
+    </div>
+</nav>
+
+<main class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-3"><i class="bi bi-clipboard-plus text-primary"></i> Registrar nuevo paciente</h2>
+    
+    <form class="card p-4 shadow-sm border-0" method="POST" action="/registrar">
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
+        <div class="row g-3 mb-4 mt-1">
+            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
+                <input type="text" class="form-control" name="owner_name" required></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
+                <input type="text" class="form-control" name="owner_phone"></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
+                <input type="email" class="form-control" name="owner_email"></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
+                <input type="text" class="form-control" name="owner_address"></div>
+        </div>
+
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
+        <div class="row g-3 mb-4 mt-1">
+            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
+                <input type="text" class="form-control" name="pet_name" required></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
+                <select class="form-select" name="pet_species">
+                    <option value="Perro">Perro</option>
+                    <option value="Gato">Gato</option>
+                    <option value="Ave">Ave</option>
+                    <option value="Otro">Otro</option>
+                </select></div>
+            <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
+                <input type="text" class="form-control" name="pet_breed"></div>
+            <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
+                <input type="number" class="form-control" name="pet_age"></div>
+            <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
+                <input type="number" step="0.01" class="form-control" name="pet_weight"></div>
+        </div>
+
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-clipboard-pulse"></i> Motivo de la consulta</h5>
+        <div class="mb-3 mt-3"><label class="form-label fw-semibold">Motivo *</label>
+            <textarea class="form-control" name="reason" rows="2" required></textarea></div>
+        <div class="mb-3"><label class="form-label fw-semibold">Diagnóstico</label>
+            <textarea class="form-control" name="diagnosis" rows="2"></textarea></div>
+
+        <div class="d-flex gap-2 border-top pt-3">
+            <button class="btn btn-primary px-4" type="submit"><i class="bi bi-save"></i> Guardar Paciente</button>
+        </div>
+    </form>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/pacientes.html (Lista de Pacientes)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Pacientes - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4"><i class="bi bi-list-ul text-primary"></i> Lista de Pacientes</h2>
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th><th>Mascota</th><th>Especie</th><th>Dueño</th><th>Nodo</th><th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Bucle Jinja2: Recorre la lista de pacientes enviada desde Python -->
+                    {% for pet, owner in pacientes %}
+                    <tr>
+                        <td class="text-muted">#{{ pet.id }}</td>
+                        <td><i class="bi bi-github text-primary"></i> <strong>{{ pet.name }}</strong></td>
+                        <td>{{ pet.species }}</td>
+                        <td>{{ owner.name }}</td>
+                        <td><span class="badge bg-secondary">{{ hostname }}</span></td>
+                        <td class="text-end">
+                            <!-- Botón Ver -->
+                            <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-eye"></i> Ver</a>
+                            <!-- Botón Editar -->
+                            <a href="{{ url_for('editar_paciente', id=pet.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Editar</a>
+                            <!-- Botón Eliminar (Solo visible para admin y sistemas) -->
+                            {% if session.get('role') in ['admin', 'sistemas'] %}
+                            <a href="{{ url_for('eliminar_paciente', id=pet.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar paciente?')"><i class="bi bi-trash"></i> Eliminar</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No hay pacientes registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/editar_paciente.html (Formulario de Edición de Paciente)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Paciente - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <!-- ... (navbar) ... -->
+</nav>
+
+<main class="container my-4">
+    <h2 class="mb-3"><i class="bi bi-pencil-square text-warning"></i> Editar Paciente #{{ pet.id }}</h2>
+    
+    <form class="card p-4 shadow-sm border-0" method="POST">
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
+        <div class="row g-3 mb-4 mt-1">
+            <!-- El atributo value="{{ owner.name }}" rellena el input con el dato actual -->
+            <div class="col-md-6"><label class="form-label">Nombre *</label>
+                <input type="text" class="form-control" name="owner_name" value="{{ owner.name }}" required></div>
+            <div class="col-md-6"><label class="form-label">Teléfono</label>
+                <input type="text" class="form-control" name="owner_phone" value="{{ owner.phone or '' }}"></div>
+            <div class="col-md-6"><label class="form-label">Email</label>
+                <input type="email" class="form-control" name="owner_email" value="{{ owner.email or '' }}"></div>
+            <div class="col-md-6"><label class="form-label">Dirección</label>
+                <input type="text" class="form-control" name="owner_address" value="{{ owner.address or '' }}"></div>
+        </div>
+
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
+        <div class="row g-3 mb-4 mt-1">
+            <div class="col-md-6"><label class="form-label">Nombre *</label>
+                <input type="text" class="form-control" name="pet_name" value="{{ pet.name }}" required></div>
+            <div class="col-md-6"><label class="form-label">Especie</label>
+                <select class="form-select" name="pet_species">
+                    <!-- Marca la opción actual de la mascota automáticamente -->
+                    <option value="Perro" {% if pet.species == 'Perro' %}selected{% endif %}>Perro</option>
+                    <option value="Gato" {% if pet.species == 'Gato' %}selected{% endif %}>Gato</option>
+                    <option value="Ave" {% if pet.species == 'Ave' %}selected{% endif %}>Ave</option>
+                    <option value="Otro" {% if pet.species == 'Otro' %}selected{% endif %}>Otro</option>
+                </select></div>
+            <div class="col-md-4"><label class="form-label">Raza</label>
+                <input type="text" class="form-control" name="pet_breed" value="{{ pet.breed or '' }}"></div>
+            <div class="col-md-4"><label class="form-label">Edad</label>
+                <input type="number" class="form-control" name="pet_age" value="{{ pet.age or '' }}"></div>
+            <div class="col-md-4"><label class="form-label">Peso</label>
+                <input type="number" step="0.01" class="form-control" name="pet_weight" value="{{ pet.weight or '' }}"></div>
+        </div>
+
+        <div class="d-flex gap-2 border-top pt-3">
+            <button class="btn btn-warning px-4" type="submit"><i class="bi bi-save"></i> Actualizar Datos</button>
+            <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/ver_paciente.html (Ficha Clínica Detallada)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Ficha del Paciente - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <!-- ... (navbar) ... -->
+</nav>
+
+<main class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-medical text-info"></i> Ficha Clínica: {{ pet.name }}</h2>
+        <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a la lista</a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Tarjeta del Dueño -->
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-dark text-white"><i class="bi bi-person-badge"></i> Datos del Dueño</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Nombre:</strong> {{ owner.name }}</li>
+                        <li class="list-group-item"><strong>Teléfono:</strong> {{ owner.phone or 'No registrado' }}</li>
+                        <li class="list-group-item"><strong>Email:</strong> {{ owner.email or 'No registrado' }}</li>
+                        <li class="list-group-item"><strong>Dirección:</strong> {{ owner.address or 'No registrada' }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de la Mascota -->
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-primary text-white"><i class="bi bi-github"></i> Datos de la Mascota</div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Especie</h6><h5>{{ pet.species or 'N/A' }}</h5></div>
+                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Raza</h6><h5>{{ pet.breed or 'N/A' }}</h5></div>
+                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Edad</h6><h5>{{ pet.age ~ ' años' if pet.age else 'N/A' }}</h5></div>
+                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Peso</h6><h5>{{ pet.weight ~ ' kg' if pet.weight else 'N/A' }}</h5></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de Consultas -->
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header bg-success text-white"><i class="bi bi-clock-history"></i> Historial de Consultas</div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Fecha</th><th>Motivo de Consulta</th><th>Diagnóstico</th></tr>
+                </thead>
+                <tbody>
+                    <!-- Bucle para recorrer las consultas médicas de esta mascota -->
+                    {% for c in consultas %}
+                    <tr>
+                        <td>{{ c.consultation_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ c.reason }}</td>
+                        <td>{{ c.diagnosis or 'Sin diagnóstico registrado' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center text-muted py-4">Esta mascota no tiene consultas registradas aún.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/usuarios.html (Gestión de Usuarios)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Usuarios - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <!-- ... (navbar) ... -->
+</nav>
+
+<main class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- Formulario de Creación -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">Crear Nuevo Usuario</div>
+                <div class="card-body">
+                    <form method="POST" action="/usuarios">
+                        <div class="mb-2"><label>Usuario</label><input type="text" name="username" class="form-control" required></div>
+                        <div class="mb-2"><label>Contraseña</label><input type="password" name="password" class="form-control" required></div>
+                        <div class="mb-3">
+                            <label>Rol</label>
+                            <select name="role" class="form-select">
+                                <option value="recepcionista">Recepcionista</option>
+                                <option value="veterinario">Veterinario</option>
+                                <option value="asistente">Asistente</option>
+                                <option value="sistemas">Sistemas</option>
+                                <option value="admin">Administrador</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar Usuario</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabla de Usuarios -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">Usuarios Registrados</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead><tr><th>ID</th><th>Usuario</th><th>Rol</th><th class="text-end">Acciones</th></tr></thead>
+                        <tbody>
+                            {% for u in usuarios %}
+                            <tr>
+                                <td>{{ u.id }}</td>
+                                <td>{{ u.username }}</td>
+                                <td><span class="badge bg-info text-dark">{{ u.role }}</span></td>
+                                <td class="text-end">
+                                    <!-- Botón Editar -->
+                                    <a href="{{ url_for('editar_usuario', id=u.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                    
+                                    <!-- Botón Eliminar (oculto si es el usuario actual) -->
+                                    {% if u.id != session.get('user_id') %}
+                                    <a href="{{ url_for('eliminar_usuario', id=u.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar a este usuario?')"><i class="bi bi-trash"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+-----------------------------------------------------------------------
+PLANTILLA: templates/editar_usuario.html (Editar Usuario)
+-----------------------------------------------------------------------
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Usuario - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <!-- ... (navbar) ... -->
+</nav>
+
+<main class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Usuario: {{ user.username }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label>Nombre de Usuario</label>
+                            <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Nueva Contraseña (dejar en blanco para mantener la actual)</label>
+                            <!-- Este input no tiene 'value' para que siempre aparezca vacío por seguridad -->
+                            <input type="password" name="password" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label>Rol</label>
+                            <select name="role" class="form-select">
+                                <!-- Marca el rol actual del usuario -->
+                                <option value="recepcionista" {% if user.role == 'recepcionista' %}selected{% endif %}>Recepcionista</option>
+                                <option value="veterinario" {% if user.role == 'veterinario' %}selected{% endif %}>Veterinario</option>
+                                <option value="asistente" {% if user.role == 'asistente' %}selected{% endif %}>Asistente</option>
+                                <option value="sistemas" {% if user.role == 'sistemas' %}selected{% endif %}>Sistemas</option>
+                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Administrador</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2 border-top pt-3">
+                            <button type="submit" class="btn btn-warning w-100"><i class="bi bi-save"></i> Guardar Cambios</button>
+                            <a href="{{ url_for('usuarios') }}" class="btn btn-outline-secondary w-100">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
