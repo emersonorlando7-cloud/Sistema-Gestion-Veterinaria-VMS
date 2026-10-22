@@ -1,0 +1,254 @@
+═══════════════════════════════════════════════════════════════════════
+   PROYECTO FINAL: INFRAESTRUCTURA LINUX CON ALTA DISPONIBILIDAD
+   UNIVERSIDAD REGIONAL DE GUATEMALA - SISTEMAS OPERATIVOS
+   Guía Completa: Comandos, Configuración y Solución de Errores
+═══════════════════════════════════════════════════════════════════════
+
+ÍNDICE
+1. Configuración de VirtualBox y Red
+2. Servidores de Base de Datos (db-01 y db-02)
+3. Servidores de Aplicación (app-01 y app-02)
+4. Balanceador de Carga (lb-01)
+5. Configuración de Firewalls (UFW)
+6. Exposición a Internet (Ngrok)
+7. Solución de Errores (Troubleshooting)
+8. Código Fuente (app.py)
+
+
+═══════════════════════════════════════════════════════════════════════
+1. CONFIGURACIÓN DE VIRTUALBOX Y RED (TODOS LOS SERVIDORES)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Crear la red privada para que las 5 máquinas se comuniquen.
+
+Paso 1.1: Crear Red Host-Only en VirtualBox
+- Ir a Archivo > Herramientas > Administrador de Red.
+- Crear red "Solo Anfitrión". IPv4: 192.168.56.1, Máscara: 255.255.255.0, DHCP: Desactivado.
+
+Paso 1.2: Configurar Adaptadores en cada VM
+- Adaptador 1: NAT (para internet).
+- Adaptador 2: Host-Only (para la red interna).
+
+Paso 1.3: Asignar IPs Estáticas (Netplan)
+# Explicación: Asigna una dirección IP fija a la tarjeta de red interna para que las máquinas se reconozcan.
+# Comandos:
+sudo nano /etc/netplan/01-netcfg.yaml # Abre el archivo de configuración de red.
+# (Pega aquí la configuración YAML con tu IP correspondiente).
+sudo chmod 600 /etc/netplan/01-netcfg.yaml # Le da permisos de seguridad para que solo el administrador pueda leerlo.
+sudo netplan apply # Aplica los cambios y activa la nueva IP.
+
+Paso 1.4: Hostnames y /etc/hosts
+# Explicación: Asigna un nombre a cada servidor y le dice a las máquinas cómo encontrar a las demás.
+# Comandos:
+sudo hostnamectl set-hostname app-01 # Cambia el nombre del servidor (ej. app-01, db-01).
+sudo nano /etc/hosts # Abre el archivo para mapear las IPs.
+# (Agrega las 5 líneas con las IPs y nombres).
+sudo ping db-01 # Hace un ping para comprobar que el nombre se resuelve correctamente.
+
+POSIBLES FALLOS Y SOLUCIONES:
+- Error "Invalid YAML": Usar solo espacios (no Tab) en el archivo. Alinear los guiones "-" con 2 espacios más que "addresses:".
+- El ping no funciona: Revisar que el Adaptador 2 esté conectado y que los archivos /etc/hosts estén idénticos en todas las máquinas.
+
+
+═══════════════════════════════════════════════════════════════════════
+2. SERVIDORES DE BASE DE DATOS (db-01 y db-02)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Replicación Maestro-Maestro.
+
+Paso 2.1: Instalación
+# Explicación: Actualiza el sistema e instala el servidor de base de datos MySQL.
+# Comandos:
+sudo apt update # Actualiza la lista de paquetes disponibles.
+sudo apt install mysql-server -y # Instala MySQL sin pedir confirmación.
+
+Paso 2.2: Configuración
+# Explicación: Configura MySQL para que pueda ser accedido desde otras máquinas.
+# Comandos:
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf # Abre el archivo de configuración de MySQL.
+# (Agrega server-id, bind-address y max_connect_errors).
+sudo systemctl restart mysql # Reinicia el servicio para aplicar los cambios.
+
+Paso 2.3: Creación de Usuarios
+# Explicación: Crea los usuarios necesarios para la replicación y para que la app se conecte.
+# Comandos:
+sudo mysql # Entra a la consola de MySQL como administrador.
+CREATE USER 'replicator'@'%' IDENTIFIED WITH caching_sha2_password BY 'ReplicaPass123!'; # Crea usuario para copiar datos.
+GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%'; # Le da permiso para replicar.
+CREATE USER 'app_user'@'%' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!'; # Crea usuario para la app.
+CREATE USER 'app_user'@'192.168.56.10' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!'; # Permite que HAProxy se conecte.
+GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'%'; # Da permisos totales en la base.
+GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'192.168.56.10'; # Da permisos específicos para HAProxy.
+FLUSH PRIVILEGES; # Recarga los permisos para que se apliquen de inmediato.
+EXIT; # Sale de MySQL.
+
+Paso 2.4: Creación de Base de Datos y Tablas (Solo en db-01)
+# Explicación: Crea la base de datos y las tablas donde se guardará la información.
+# Comandos:
+CREATE DATABASE vet_clinic_db; # Crea la base de datos.
+USE vet_clinic_db; # Selecciona la base de datos.
+# (Ejecuta los CREATE TABLE para users, owners, pets, consultations).
+
+Paso 2.5: Vincular Maestros
+# Explicación: Conecta ambos servidores para que se copien los datos mutuamente.
+# Comandos:
+# (En db-01): 
+SHOW BINARY LOG STATUS; # Obtiene la posición actual del registro.
+# (En db-02):
+STOP REPLICA; # Detiene cualquier replicación previa.
+RESET REPLICA ALL; # Borra la configuración anterior.
+CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.56.13', SOURCE_USER='replicator', SOURCE_PASSWORD='ReplicaPass123!', SOURCE_LOG_FILE='[File_db01]', SOURCE_LOG_POS=[Pos_db01], GET_SOURCE_PUBLIC_KEY=1; # Configura db-02 para copiar de db-01.
+START REPLICA; # Inicia la replicación.
+
+POSIBLES FALLOS Y SOLUCIONES:
+- "Unknown variable 'log_bin'": MySQL 8.4 eliminó esta variable. Borrarla del archivo de configuración.
+- "Plugin 'mysql_native_password' is not loaded": MySQL 8.4 usa caching_sha2_password por defecto. Usar siempre ese plugin.
+- "Access denied for user 'app_user'@'lb-01'": Ocurre porque HAProxy oculta la IP real. Solución: Crear el usuario para la IP 192.168.56.10.
+- Replicación atascada: Hacer STOP REPLICA; RESET REPLICA ALL; volver a configurar y encender.
+- Error 2013 (Lost connection): Tener timeouts altos en HAProxy y la lógica de reintento en Python.
+
+
+═══════════════════════════════════════════════════════════════════════
+3. SERVIDORES DE APLICACIÓN (app-01 y app-02)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Correr Flask con Gunicorn como servicio.
+
+Paso 3.1: Instalar dependencias
+# Explicación: Instala Python y las herramientas necesarias para ejecutar la aplicación.
+# Comandos:
+sudo apt install python3-pip python3-venv python3.14-venv git -y # Instala Python, pip, entorno virtual y Git.
+
+Paso 3.2: Descargar proyecto
+# Explicación: Descarga el código fuente de la aplicación desde GitHub.
+# Comandos:
+git clone https://github.com/emersonorlando7-cloud/VetSystem_APP.git # Descarga el repositorio.
+cd VetSystem_APP # Entra a la carpeta del proyecto.
+python3 -m venv venv # Crea un entorno virtual aislado.
+source venv/bin/activate # Activa el entorno virtual.
+pip install flask flask-sqlalchemy pymysql gunicorn # Instala las librerías necesarias.
+
+Paso 3.3: Crear Servicio Systemd
+# Explicación: Convierte la aplicación en un servicio de Linux para que arranque automáticamente.
+# Comandos:
+sudo nano /etc/systemd/system/vetsystem.service # Crea el archivo de configuración del servicio.
+# (Pega la configuración con User, WorkingDirectory, ExecStart).
+sudo systemctl daemon-reload # Recarga los servicios del sistema.
+sudo systemctl start vetsystem # Inicia la aplicación.
+sudo systemctl enable vetsystem # Habilita el arranque automático.
+
+POSIBLES FALLOS Y SOLUCIONES:
+- "TemplateNotFound": Faltan archivos HTML. Asegurarse de que la carpeta 'templates' exista y tenga los archivos.
+- Error 500 al editar: Ocurre al dejar campos numéricos vacíos. Solución: Usar int(age) if age else None en el código.
+- Error 1451 al eliminar: Ocurre por llaves foráneas. Solución: Borrar las consultas (hijos) antes de borrar mascota/dueño y usar db.session.flush().
+- Página en blanco o 503: El servicio no está corriendo. Revisar con sudo systemctl status vetsystem y reiniciar.
+
+
+═══════════════════════════════════════════════════════════════════════
+4. BALANCEADOR DE CARGA (lb-01)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Distribuir carga web y dar Failover a la BD.
+
+Paso 4.1: Instalar HAProxy
+# Explicación: Instala el balanceador de carga.
+# Comandos:
+sudo apt install haproxy -y # Instala HAProxy.
+
+Paso 4.2: Configurar
+# Explicación: Configura HAProxy para repartir tráfico web y conmutar la base de datos en caso de fallo.
+# Comandos:
+sudo nano /etc/haproxy/haproxy.cfg # Abre el archivo de configuración de HAProxy.
+# (Pega los bloques global, defaults, frontend, backend y listen).
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg # Valida que el archivo no tenga errores de tipeo.
+sudo systemctl restart haproxy # Reinicia HAProxy para aplicar los cambios.
+
+POSIBLES FALLOS Y SOLUCIONES:
+- "unknown keyword 'balace'": Error de tipeo. Corregir a 'balance'.
+- "stats parameter 'anable'": Error de tipeo. Corregir a 'enable'.
+- "backend 'mysql_servers' has the same name": Se duplicó el bloque. Borrar el duplicado.
+- Las apps o bases en rojo: Revisar que los servicios en app/db estén corriendo y que los firewalls permitan el tráfico.
+
+
+═══════════════════════════════════════════════════════════════════════
+5. CONFIGURACIÓN DE FIREWALLS (UFW)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Permitir solo el tráfico necesario.
+
+En db-01 y db-02:
+# Explicación: Abre el puerto de SSH y permite que HAProxy acceda a MySQL.
+# Comandos:
+sudo ufw allow 22/tcp # Permite conexiones SSH.
+sudo ufw allow from 192.168.56.10 to any port 3306 # Permite solo a HAProxy acceder a la base de datos.
+sudo ufw enable # Activa el firewall.
+
+En app-01 y app-02:
+# Explicación: Abre el puerto de SSH y el puerto de la aplicación Flask.
+# Comandos:
+sudo ufw allow 22/tcp # Permite conexiones SSH.
+sudo ufw allow 5000/tcp # Permite el tráfico de la aplicación Flask.
+sudo ufw enable # Activa el firewall.
+
+En lb-01:
+# Explicación: Abre puertos web, base de datos y panel de estadísticas.
+# Comandos:
+sudo ufw allow 22/tcp # Permite conexiones SSH.
+sudo ufw allow 80/tcp # Permite el tráfico web.
+sudo ufw allow 3306/tcp # Permite el tráfico de base de datos.
+sudo ufw allow 8080/tcp # Permite el acceso al panel de estadísticas.
+sudo ufw enable # Activa el firewall.
+
+
+═══════════════════════════════════════════════════════════════════════
+6. EXPOSICIÓN A INTERNET (NGROK)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Dar un enlace público a lb-01 sin abrir puertos en el router.
+
+Instalación en lb-01:
+# Explicación: Descarga y prepara la herramienta Ngrok.
+# Comandos:
+wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz # Descarga el archivo de Ngrok.
+tar -xvzf ngrok-v3-stable-linux-amd64.tgz # Descomprime el archivo.
+sudo mv ngrok /usr/local/bin/ # Mueve el ejecutable a una carpeta del sistema.
+
+Autenticación:
+# Explicación: Vincula Ngrok con tu cuenta.
+# Comandos:
+ngrok config add-authtoken TU_TOKEN_AQUI # Guarda tu token de autenticación.
+
+Servicio permanente:
+# Explicación: Hace que Ngrok se inicie automáticamente con el sistema y use un dominio fijo.
+# Comandos:
+sudo nano /etc/systemd/system/ngrok.service # Crea el archivo de servicio.
+# (Pega la configuración con User, ExecStart apuntando al dominio ngrok).
+sudo systemctl daemon-reload # Recarga el sistema.
+sudo systemctl enable ngrok # Habilita el arranque automático.
+sudo systemctl start ngrok # Inicia el túnel.
+
+
+═══════════════════════════════════════════════════════════════════════
+7. SOLUCIÓN DE ERRORES (TROUBLESHOOTING GENERAL)
+═══════════════════════════════════════════════════════════════════════
+A. "504 Gateway Timeout" o página no carga:
+   - Causa: HAProxy no puede conectar con las apps.
+   - Solución: Verificar que vetsystem.service esté activo en app-01 y app-02.
+
+B. Error 500 en Flask (Pantalla blanca):
+   - Causa: Error interno en el código (ej. campos vacíos, error de tipo de dato).
+   - Solución: Agregar try...except en app.py. Revisar journalctl -u vetsystem -n 50.
+
+C. Base de datos bloqueada por errores:
+   - Causa: MySQL bloquea IPs por múltiples intentos fallidos de HAProxy.
+   - Solución: En MySQL, ejecutar: TRUNCATE TABLE performance_schema.host_cache; y reiniciar HAProxy.
+
+D. La página dice "Lost connection to MySQL" (2013):
+   - Causa: Se apagó una base abruptamente y la conexión en memoria murió.
+   - Solución: La aplicación ya tiene un bucle de reintento (time.sleep(1)) y PRE_PING.
+
+E. Al editar campos se genera error 500:
+   - Causa: Dejar vacíos los campos de Edad o Peso (columnas numéricas).
+   - Solución: Convertir a None si están vacíos: pet.age = int(age) if age else None.
+
+F. No se puede eliminar un paciente (Error 1451):
+   - Causa: El paciente tiene consultas médicas asociadas (llave foránea).
+   - Solución: En la ruta eliminar_paciente, borrar primero las consultas y usar db.session.flush().
+
+═══════════════════════════════════════════════════════════════════════
+FIN DE LA GUÍA
+═══════════════════════════════════════════════════════════════════════

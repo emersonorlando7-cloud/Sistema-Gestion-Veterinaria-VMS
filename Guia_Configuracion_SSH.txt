@@ -1,0 +1,133 @@
+═══════════════════════════════════════════════════════════════════════
+   GUÍA DE CONFIGURACIÓN DE SSH (ACCESO REMOTO Y PORTAPAPELES)
+   PROYECTO FINAL: INFRAESTRUCTURA LINUX CON ALTA DISPONIBILIDAD
+═══════════════════════════════════════════════════════════════════════
+
+ÍNDICE
+1. ¿Qué es SSH y para qué nos sirve en este proyecto?
+2. Instalación y Configuración del Servidor SSH (En TODAS las VMs)
+3. Configuración del Firewall (UFW)
+4. Cómo conectarse desde Windows (Laptop)
+5. Posibles Fallos y Soluciones
+
+
+═══════════════════════════════════════════════════════════════════════
+1. ¿QUÉ ES SSH Y PARA QUÉ NOS SIRVE?
+═══════════════════════════════════════════════════════════════════════
+SSH (Secure Shell) es un protocolo que permite conectarse de forma segura a 
+una computadora remota (en este caso, tus máquinas virtuales) a través de la red.
+
+En nuestro proyecto, SSH es VITAL porque:
+- Nos permite controlar las VMs desde la terminal de Windows (PowerShell).
+- ¡Soluciona el problema de copiar y pegar! Al estar en la terminal de 
+  Windows, puedes copiar un comando de la guía (Ctrl+C) y pegarlo 
+  directamente en la terminal (Ctrl+V o Clic Derecho).
+
+
+═══════════════════════════════════════════════════════════════════════
+2. INSTALACIÓN Y CONFIGURACIÓN DEL SERVIDOR SSH
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Instalar el servidor SSH en cada máquina virtual (lb-01, app-01, 
+app-02, db-01, db-02) para que acepten conexiones desde tu laptop.
+
+# Explicación: Instalamos el paquete "openssh-server" y nos aseguramos de 
+# que se inicie automáticamente al encender la máquina.
+
+# Comandos (Ejecutar en CADA máquina virtual):
+
+sudo apt update # Actualiza la lista de paquetes disponibles en Ubuntu.
+sudo apt install openssh-server -y # Instala el servidor SSH sin hacer preguntas.
+sudo systemctl enable ssh # Habilita el servicio para que arranque solo al encender la VM.
+sudo systemctl start ssh # Inicia el servicio SSH ahora mismo.
+sudo systemctl status ssh # Muestra el estado del servicio (Debe decir "active (running)" en verde).
+
+
+═══════════════════════════════════════════════════════════════════════
+3. CONFIGURACIÓN DEL FIREWALL (UFW)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Permitir que el tráfico del puerto 22 (el puerto que usa SSH) 
+pase a través del firewall de Ubuntu.
+
+# Explicación: Si el firewall está activado (lo hicimos en el proyecto), 
+# bloqueará SSH por defecto. Le decimos que permita el puerto 22.
+
+# Comandos (Ejecutar en CADA máquina virtual):
+
+sudo ufw allow 22/tcp # Permite el tráfico en el puerto 22 (SSH).
+sudo ufw reload # Recarga las reglas del firewall para aplicar el cambio.
+sudo ufw status # Muestra las reglas del firewall (debe aparecer 22/tcp ALLOW).
+
+
+═══════════════════════════════════════════════════════════════════════
+4. CÓMO CONECTARSE DESDE WINDOWS (LAPTOP)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Abrir una terminal en Windows y "entrar" a la máquina virtual.
+
+# Explicación: Usaremos PowerShell o Símbolo del Sistema de Windows. 
+# El comando "ssh" ya viene instalado por defecto en Windows 10 y 11.
+
+# Comando general:
+ssh usuario@IP_DE_LA_MAQUINA
+
+# Ejemplos según tu servidor (Reemplaza "servidoremerson" por tu usuario real):
+
+# Para entrar a lb-01:
+ssh servidoremerson@192.168.56.10
+
+# Para entrar a app-01:
+ssh servidorjefferson@192.168.56.11
+
+# Para entrar a app-02:
+ssh servidorangel@192.168.56.12
+
+# Para entrar a db-01:
+ssh servidorbengamin@192.168.56.13
+
+# Para entrar a db-02:
+ssh servidorluis@192.168.56.14
+
+# Al ejecutar el comando, la terminal dirá algo como:
+# "The authenticity of host '192.168.56.10' can't be established..."
+# Debes escribir "yes" y presionar Enter.
+# Luego te pedirá la contraseña. Escríbela (no se verán asteriscos, es normal) 
+# y presiona Enter.
+
+# ¡Felicidades! Ahora estás dentro de la VM. Puedes copiar el comando de esta 
+# guía en Windows (Ctrl+C), e ir a la terminal (Ctrl+V o Clic derecho) para pegarlo.
+
+
+═══════════════════════════════════════════════════════════════════════
+5. POSIBLES FALLOS Y SOLUCIONES
+═══════════════════════════════════════════════════════════════════════
+
+FALLO 1: "Connection refused" (Conexión rechazada)
+- CAUSA: El servidor SSH no está instalado o el servicio está apagado en la VM.
+- SOLUCIÓN: Ve a la ventana de VirtualBox de la máquina, ejecuta:
+  sudo apt install openssh-server -y
+  sudo systemctl start ssh
+
+FALLO 2: "Connection timed out" (Tiempo de espera agotado)
+- CAUSA: Estás escribiendo mal la IP, o la máquina está apagada, o el firewall 
+  está bloqueando el tráfico.
+- SOLUCIÓN: Revisa que la IP sea correcta (ip addr en la VM). Revisa que la 
+  máquina esté encendida. Ejecuta "sudo ufw allow 22/tcp" en la VM.
+
+FALLO 3: "Permission denied, please try again" (Permiso denegado)
+- CAUSA: Escribiste mal el nombre de usuario o la contraseña.
+- SOLUCIÓN: Revisa el nombre de usuario (es sensible a mayúsculas). Recuerda 
+  que al escribir la contraseña no se ve nada en la pantalla, debes escribirla 
+  "a ciegas" y presionar Enter.
+
+FALLO 4: "Host key verification failed" (Verificación de llave fallida)
+- CAUSA: La IP de la máquina cambió (o cambió su huella digital).
+- SOLUCIÓN: Ejecuta este comando en Windows para borrar la huella vieja:
+  ssh-keygen -R 192.168.56.XX (Reemplaza XX por la IP de tu máquina).
+
+FALLO 5: No puedo pegar en la terminal SSH
+- CAUSA: Estás usando una terminal que no soporta el atajo normal.
+- SOLUCIÓN: En Windows, usa "Clic derecho" del mouse para pegar. En algunas 
+  terminales de Linux se usa "Ctrl + Shift + V".
+
+═══════════════════════════════════════════════════════════════════════
+FIN DE LA GUÍA DE SSH
+═══════════════════════════════════════════════════════════════════════
