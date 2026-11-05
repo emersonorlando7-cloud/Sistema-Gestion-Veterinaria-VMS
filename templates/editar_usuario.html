@@ -15,6 +15,7 @@
             <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
             <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link active" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
         </div>
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }}</span>
@@ -26,8 +27,6 @@
 <main class="container my-4">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            
-            <!-- Mensajes de alerta (éxito o error de nombre duplicado) -->
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
                 {% for category, message in messages %}
@@ -55,11 +54,9 @@
                         <div class="mb-3">
                             <label>Rol</label>
                             <select name="role" class="form-select">
-                                <option value="recepcionista" {% if user.role == 'recepcionista' %}selected{% endif %}>Recepcionista</option>
-                                <option value="veterinario" {% if user.role == 'veterinario' %}selected{% endif %}>Veterinario</option>
-                                <option value="asistente" {% if user.role == 'asistente' %}selected{% endif %}>Asistente</option>
-                                <option value="sistemas" {% if user.role == 'sistemas' %}selected{% endif %}>Sistemas</option>
-                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Administrador</option>
+                                {% for r in roles %}
+                                <option value="{{ r.name }}" {% if user.role == r.name %}selected{% endif %}>{{ r.name|capitalize }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="d-flex gap-2 border-top pt-3">
