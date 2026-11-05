@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Roles - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link active" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }}</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4"><i class="bi bi-shield-lock text-primary"></i> Gestión de Roles y Permisos</h2>
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">Crear Nuevo Rol</div>
+                <div class="card-body">
+                    <form method="POST" action="/roles">
+                        <div class="mb-3">
+                            <label>Nombre del Rol</label>
+                            <input type="text" name="role_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Permisos</label>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="ver_pacientes" class="form-check-input"> Ver Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="crear_pacientes" class="form-check-input"> Crear Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="editar_pacientes" class="form-check-input"> Editar Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="eliminar_pacientes" class="form-check-input"> Eliminar Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="gestionar_usuarios" class="form-check-input"> Gestionar Usuarios</div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar Rol</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">Roles Existentes</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>ID</th><th>Rol</th><th>Permisos</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            {% for r in roles %}
+                            <tr>
+                                <td>{{ r.id }}</td>
+                                <td>{{ r.name }}</td>
+                                <td><small>{{ r.permissions }}</small></td>
+                                <td>
+                                    {% if r.name not in ['admin', 'sistemas'] %}
+                                    <a href="{{ url_for('eliminar_rol', id=r.id) }}" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
