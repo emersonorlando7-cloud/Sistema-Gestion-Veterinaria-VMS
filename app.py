@@ -11,11 +11,21 @@ app.secret_key = 'clave_secreta_vetsystem_segura'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 280
-app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20
-app.config['SQLALCHEMY_POOL_PRE_PING'] = True
+
+# --- CONFIGURACIÓN DEL POOL DE CONEXIONES (SOLUCIÓN A LA LENTITUD) ---
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,
+    'max_overflow': 20,
+    'pool_recycle': 280,
+    'pool_pre_ping': True
+}
 
 db = SQLAlchemy(app)
+
+# --- LIMPIEZA AUTOMÁTICA DE SESIÓN (EVITA CONEXIONES ZOMBIS) ---
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove()
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -81,15 +91,12 @@ def permission_required(permission):
         def decorated_function(*args, **kwargs):
             if 'user_id' not in session:
                 return redirect(url_for('login'))
-            
             user_role = session.get('role')
             if user_role in ['admin', 'sistemas']:
                 return f(*args, **kwargs)
-                
             role_db = Role.query.filter_by(name=user_role).first()
             if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
                 return f(*args, **kwargs)
-                
             return """
             <script>
                 alert('⛔ No tienes permisos para acceder a esta sección.');
@@ -134,7 +141,6 @@ def inicio():
         total_pacientes = Pet.query.count()
         total_duenos = Owner.query.count()
         total_consultas = Consultation.query.count()
-        
         hoy = date.today()
         consultas_hoy = Consultation.query.filter(db.func.date(Consultation.appointment_date) == hoy).count()
         citas_hoy = db.session.query(Consultation, Pet, Owner).join(Pet, Consultation.pet_id == Pet.id).join(Owner, Pet.owner_id == Owner.id).filter(db.func.date(Consultation.appointment_date) == hoy).order_by(Consultation.appointment_date).all()
@@ -144,7 +150,6 @@ def inicio():
         total_consultas = 0
         consultas_hoy = 0
         citas_hoy = []
-        
     return render_template('inicio.html', hostname=socket.gethostname(), total_pacientes=total_pacientes, total_duenos=total_duenos, total_consultas=total_consultas, consultas_hoy=consultas_hoy, citas_hoy=citas_hoy)
 
 @app.route('/registrar', methods=['GET', 'POST'])
@@ -179,8 +184,8 @@ def registrar_paciente():
 
                 consultation = Consultation(pet_id=pet.id, reason=request.form.get('reason'), diagnosis=request.form.get('diagnosis'), appointment_date=appointment_dt)
                 db.session.add(consultation)
-                
                 db.session.commit()
+                
                 flash('Paciente y cita registrados exitosamente!', 'success')
                 return redirect(url_for('pacientes'))
             except Exception as e:
@@ -203,9 +208,15 @@ def pacientes():
 @app.route('/paciente/ver/<int:id>')
 @login_required
 def ver_paciente(id):
-    pet = Pet.query.get_or_404(id)
-    owner = Owner.query.get(pet.owner_id)
-    consultas = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).all()
+    try:
+        pet = Pet.query.get_or_404(id)
+        owner = Owner.query.get(pet.owner_id)
+        consultas = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).all()
+    except Exception:
+        db.session.rollback()
+        flash('Error de conexión. Recargue la página e intente de nuevo.', 'danger')
+        return redirect(url_for('pacientes'))
+        
     return render_template('ver_paciente.html', pet=pet, owner=owner, consultas=consultas, hostname=socket.gethostname())
 
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
@@ -216,7 +227,7 @@ def editar_paciente(id):
         pet = Pet.query.get_or_404(id)
         owner = Owner.query.get(pet.owner_id)
     except Exception:
-        flash('Error de conexión con la base de datos. Recargue la página e intente de nuevo.', 'danger')
+        flash('Error de conexión con la base de datos. Recargue la página.', 'danger')
         return redirect(url_for('pacientes'))
 
     if request.method == 'POST':
@@ -227,16 +238,13 @@ def editar_paciente(id):
                 owner.phone = request.form.get('owner_phone')
                 owner.email = request.form.get('owner_email')
                 owner.address = request.form.get('owner_address')
-                
                 pet.name = request.form['pet_name']
                 pet.species = request.form.get('pet_species')
                 pet.breed = request.form.get('pet_breed')
-                
                 age = request.form.get('pet_age')
                 weight = request.form.get('pet_weight')
                 pet.age = int(age) if age else None
                 pet.weight = float(weight) if weight else None
-                
                 db.session.commit()
                 flash('Paciente actualizado correctamente!', 'success')
                 return redirect(url_for('pacientes'))
@@ -246,7 +254,6 @@ def editar_paciente(id):
                     time.sleep(1)
                 else:
                     flash(f'Error al actualizar paciente: {str(e)}', 'danger')
-            
     return render_template('editar_paciente.html', pet=pet, owner=owner, hostname=socket.gethostname())
 
 @app.route('/paciente/eliminar/<int:id>')
@@ -258,14 +265,11 @@ def eliminar_paciente(id):
         try:
             pet = Pet.query.get_or_404(id)
             owner = Owner.query.get(pet.owner_id)
-            
             Consultation.query.filter_by(pet_id=pet.id).delete()
             db.session.flush()
-            
             db.session.delete(pet)
             db.session.flush()
             db.session.delete(owner)
-            
             db.session.commit()
             flash('Paciente eliminado.', 'success')
             return redirect(url_for('pacientes'))
@@ -299,8 +303,7 @@ def usuarios():
                 if intento < (intentos - 1):
                     time.sleep(1)
                 else:
-                    flash('Error al crear el usuario (quizás ya existe o falló la red).', 'danger')
-    
+                    flash('Error al crear el usuario.', 'danger')
     try:
         lista_users = User.query.all()
         lista_roles = Role.query.all()
@@ -317,9 +320,8 @@ def editar_usuario(id):
         user = User.query.get_or_404(id)
         lista_roles = Role.query.all()
     except Exception:
-        flash('Error de conexión con la base de datos. Recargue la página e intente de nuevo.', 'danger')
+        flash('Error de conexión con la base de datos.', 'danger')
         return redirect(url_for('usuarios'))
-    
     if request.method == 'POST':
         intentos = 3
         for intento in range(intentos):
@@ -327,16 +329,13 @@ def editar_usuario(id):
                 nuevo_username = request.form['username']
                 usuario_existente = User.query.filter_by(username=nuevo_username).first()
                 if usuario_existente and usuario_existente.id != user.id:
-                    flash('El nombre de usuario ya está en uso. Elige otro.', 'danger')
+                    flash('El nombre de usuario ya está en uso.', 'danger')
                     return redirect(url_for('editar_usuario', id=user.id))
-
                 user.username = nuevo_username
                 user.role = request.form['role']
-                
                 new_password = request.form.get('password')
                 if new_password:
                     user.password_hash = generate_password_hash(new_password)
-                    
                 db.session.commit()
                 flash('Usuario actualizado correctamente!', 'success')
                 return redirect(url_for('usuarios'))
@@ -346,7 +345,6 @@ def editar_usuario(id):
                     time.sleep(1)
                 else:
                     flash(f'Error al actualizar usuario: {str(e)}', 'danger')
-            
     return render_template('editar_usuario.html', user=user, roles=lista_roles, hostname=socket.gethostname())
 
 @app.route('/usuario/eliminar/<int:id>')
@@ -356,7 +354,6 @@ def eliminar_usuario(id):
     if id == session.get('user_id'):
         flash('No puedes eliminar tu propio usuario activo.', 'warning')
         return redirect(url_for('usuarios'))
-
     intentos = 3
     for intento in range(intentos):
         try:
@@ -371,7 +368,6 @@ def eliminar_usuario(id):
                 time.sleep(1)
             else:
                 flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
-
     return redirect(url_for('usuarios'))
 
 @app.route('/roles', methods=['GET', 'POST'])
@@ -383,7 +379,6 @@ def roles():
             name = request.form['role_name']
             permissions = request.form.getlist('permissions')
             perms_str = ','.join(permissions) if permissions else 'ninguno'
-            
             nuevo_role = Role(name=name, permissions=perms_str)
             db.session.add(nuevo_role)
             db.session.commit()
@@ -392,7 +387,6 @@ def roles():
         except Exception:
             db.session.rollback()
             flash('Error al crear el rol (quizás ya existe).', 'danger')
-            
     lista_roles = Role.query.all()
     return render_template('roles.html', roles=lista_roles, hostname=socket.gethostname())
 
