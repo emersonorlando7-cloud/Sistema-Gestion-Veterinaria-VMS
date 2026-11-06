@@ -10,8 +10,8 @@
 # render_template: Para cargar los archivos HTML.
 # request: Para capturar los datos de los formularios.
 # redirect/url_for: Para redirigir al usuario entre páginas.
-# flash: Para mostrar mensajes de éxito o error (los cuadros de colores).
-# session: Para manejar el inicio de sesión (login) del usuario.
+# flash: Para mostrar mensajes de éxito o error.
+# session: Para manejar el inicio de sesión del usuario.
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 
 # SQLAlchemy: El ORM que nos permite interactuar con MySQL usando clases de Python.
@@ -21,7 +21,7 @@ from flask_sqlalchemy import SQLAlchemy
 # check_password_hash: Compara la contraseña escrita con la encriptada en la BD.
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# wraps: Se usa para crear el decorador @login_required (protege las rutas).
+# wraps: Se usa para crear el decorador @login_required.
 from functools import wraps
 
 # socket: Para obtener el nombre de la máquina (app-01 o app-02).
@@ -30,10 +30,13 @@ import socket
 # time: Para usar time.sleep() y crear la pausa de reintento de conexión.
 import time
 
+# datetime, date: Para manejar fechas y horas (citas y consultas de hoy).
+from datetime import datetime, date
+
 # ==============================================================================
 # 2. CONFIGURACIÓN INICIAL
 # ==============================================================================
-app = Flask(__name__)
+app = Flask(__name__) # Inicializa la aplicación Flask.
 
 # Clave secreta necesaria para firmar las cookies de sesión (Login).
 app.secret_key = 'clave_secreta_vetsystem_segura'
@@ -42,30 +45,46 @@ app.secret_key = 'clave_secreta_vetsystem_segura'
 # Apunta a HAProxy (192.168.56.10) en el puerto 3306.
 # Esto permite que, si db-01 se cae, HAProxy envíe el tráfico a db-02.
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Desactiva el rastreo para ahorrar memoria.
 
-# --- SOLUCIÓN AL ERROR 2013 (Pérdida de conexión) ---
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 280      # Recicla conexiones viejas cada 280s
-app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20       # Tiempo máximo de espera al conectar
-app.config['SQLALCHEMY_POOL_PRE_PING'] = True    # Hace un "ping" antes de usar la conexión para verificar que siga viva
+# --- CONFIGURACIÓN DEL POOL DE CONEXIONES (SOLUCIÓN A LA LENTITUD) ---
+# Agrupa las conexiones para que la app no colapse cuando hay muchas visitas.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,        # Permite hasta 10 conexiones inactivas en el pool.
+    'max_overflow': 20,     # Permite 20 conexiones extra si el pool está lleno.
+    'pool_recycle': 280,    # Recicla conexiones viejas antes de que MySQL las cierre (evita error 2013).
+    'pool_pre_ping': True   # Hace un "ping" antes de usar la conexión para verificar que siga viva.
+}
 
-db = SQLAlchemy(app)
+db = SQLAlchemy(app) # Inicializa la base de datos con la configuración de la app.
+
+# --- LIMPIEZA AUTOMÁTICA DE SESIÓN (EVITA CONEXIONES ZOMBIS) ---
+# Esta función se ejecuta SIEMPRE al final de cada petición web.
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove() # Borra la sesión de la BD, evitando que la conexión quede "colgada" si hubo un error.
 
 # ==============================================================================
 # 3. MODELOS (Mapeo de las tablas de MySQL a clases de Python)
 # ==============================================================================
+# MODELO: Para crear roles dinámicos con permisos personalizados.
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer, primary_key=True) # Llave primaria autoincremental.
+    name = db.Column(db.String(50), unique=True, nullable=False) # Nombre único (ej. secretaria).
+    permissions = db.Column(db.Text, nullable=False) # Permisos separados por coma.
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    # unique=True evita que haya dos usuarios con el mismo nombre.
-    username = db.Column(db.String(50), unique=True, nullable=False) 
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False) # admin, sistemas, veterinario, etc.
+    username = db.Column(db.String(50), unique=True, nullable=False) # Único para el login.
+    password_hash = db.Column(db.String(255), nullable=False) # Contraseña encriptada.
+    role = db.Column(db.String(50), nullable=False) # Nombre del rol asignado.
 
 class Owner(db.Model):
     __tablename__ = 'owners'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False) # Nombre del dueño (obligatorio).
     phone = db.Column(db.String(20))
     email = db.Column(db.String(100))
     address = db.Column(db.String(255))
@@ -73,8 +92,7 @@ class Owner(db.Model):
 class Pet(db.Model):
     __tablename__ = 'pets'
     id = db.Column(db.Integer, primary_key=True)
-    # ForeignKey conecta a la mascota con un dueño específico.
-    owner_id = db.Column(db.Integer, db.ForeignKey('owners.id')) 
+    owner_id = db.Column(db.Integer, db.ForeignKey('owners.id')) # Relación con dueño.
     name = db.Column(db.String(100), nullable=False)
     species = db.Column(db.String(50))
     breed = db.Column(db.String(50))
@@ -84,12 +102,11 @@ class Pet(db.Model):
 class Consultation(db.Model):
     __tablename__ = 'consultations'
     id = db.Column(db.Integer, primary_key=True)
-    # ForeignKey conecta la consulta médica con la mascota.
-    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id')) 
+    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id')) # Relación con mascota.
     reason = db.Column(db.Text)
     diagnosis = db.Column(db.Text)
-    # server_default=db.func.now() guarda automáticamente la fecha y hora actual de MySQL.
-    consultation_date = db.Column(db.DateTime, server_default=db.func.now())
+    # Guarda la fecha y hora de la cita programada.
+    appointment_date = db.Column(db.DateTime, nullable=False)
 
 # ==============================================================================
 # 4. CREACIÓN AUTOMÁTICA DEL USUARIO ADMIN
@@ -97,7 +114,7 @@ class Consultation(db.Model):
 # Esto se ejecuta una sola vez al encender la aplicación.
 with app.app_context():
     try:
-        db.create_all() # Crea las tablas en MySQL si no existen
+        db.create_all() # Crea las tablas en MySQL si no existen.
         # Busca si 'emerson_7' ya existe. Si no, lo crea.
         if not User.query.filter_by(username='emerson_7').first():
             admin_user = User(username='emerson_7', password_hash=generate_password_hash('P@ssw0rd'), role='admin')
@@ -107,17 +124,47 @@ with app.app_context():
         print(f"Error al crear usuario inicial: {e}")
 
 # ==============================================================================
-# 5. DECORADOR DE SEGURIDAD
+# 5. DECORADORES DE SEGURIDAD Y PERMISOS
 # ==============================================================================
-# Esta función "envuelve" a las rutas para verificar que el usuario esté logueado.
+# Decorador 1: Verifica que el usuario esté logueado.
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if 'user_id' not in session: # Si no hay sesión activa.
             flash('Por favor, inicia sesión primero.', 'warning')
-            return redirect(url_for('login'))
+            return redirect(url_for('login')) # Redirige al login.
         return f(*args, **kwargs)
     return decorated_function
+
+# Decorador 2: Verifica que el rol tenga el permiso requerido.
+def permission_required(permission):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return redirect(url_for('login'))
+            
+            user_role = session.get('role')
+            # Admin y sistemas siempre tienen acceso total.
+            if user_role in ['admin', 'sistemas']:
+                return f(*args, **kwargs)
+                
+            # Busca si el rol personalizado tiene el permiso en la BD.
+            role_db = Role.query.filter_by(name=user_role).first()
+            if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
+                return f(*args, **kwargs)
+                
+            # Devuelve un script HTML con JavaScript. 
+            # La alerta salta instantáneamente y window.history.back() 
+            # devuelve al usuario a la página anterior.
+            return """
+            <script>
+                alert('⛔ No tienes permisos para acceder a esta sección.');
+                window.history.back();
+            </script>
+            """
+        return decorated_function
+    return decorator
 
 # ==============================================================================
 # 6. RUTAS DE LA APLICACIÓN
@@ -131,7 +178,7 @@ def login():
         password = request.form['password']
         try:
             user = User.query.filter_by(username=username).first()
-            # Compara la contraseña en texto plano con el hash de la BD.
+            # check_password_hash compara la clave escrita con el hash de la BD.
             if user and check_password_hash(user.password_hash, password):
                 session['user_id'] = user.id
                 session['username'] = user.username
@@ -140,14 +187,13 @@ def login():
             else:
                 flash('Usuario o contraseña incorrectos', 'danger')
         except Exception:
-            # Si hay un micro-corte de red a la BD, muestra error pero no rompe la app.
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
 
 # --- RUTA: CERRAR SESIÓN ---
 @app.route('/logout')
 def logout():
-    session.clear() # Borra los datos de la sesión
+    session.clear() # Borra todos los datos de la sesión.
     return redirect(url_for('login'))
 
 # --- RUTA: INICIO (Panel de Control) ---
@@ -160,50 +206,77 @@ def index():
 @login_required
 def inicio():
     try:
-        # Cuenta los registros para mostrar el resumen en pantalla.
+        # Cuenta total de registros.
         total_pacientes = Pet.query.count()
         total_duenos = Owner.query.count()
         total_consultas = Consultation.query.count()
+        
+        # Consultas de hoy.
+        hoy = date.today() # Obtiene el día actual.
+        # Filtra las consultas donde la fecha de cita coincide con hoy.
+        consultas_hoy = Consultation.query.filter(db.func.date(Consultation.appointment_date) == hoy).count()
+        # Trae los detalles de las citas de hoy para la tabla.
+        citas_hoy = db.session.query(Consultation, Pet, Owner).join(Pet, Consultation.pet_id == Pet.id).join(Owner, Pet.owner_id == Owner.id).filter(db.func.date(Consultation.appointment_date) == hoy).order_by(Consultation.appointment_date).all()
     except Exception:
         # Si la base falla, muestra 0 en lugar de romper la página.
         total_pacientes = 0
         total_duenos = 0
         total_consultas = 0
-    return render_template('inicio.html', hostname=socket.gethostname(), total_pacientes=total_pacientes, total_duenos=total_duenos, total_consultas=total_consultas)
+        consultas_hoy = 0
+        citas_hoy = []
+        
+    return render_template('inicio.html', hostname=socket.gethostname(), total_pacientes=total_pacientes, total_duenos=total_duenos, total_consultas=total_consultas, consultas_hoy=consultas_hoy, citas_hoy=citas_hoy)
 
-# --- RUTA: REGISTRAR PACIENTE ---
+# --- RUTA: REGISTRAR PACIENTE (CON CITA) ---
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
+@permission_required('crear_pacientes') # Requiere permiso de creación.
 def registrar_paciente():
     if request.method == 'POST':
-        # BUCLE DE REINTENTOS: Si falla la conexión a MySQL, lo intenta hasta 3 veces.
-        intentos = 3
+        intentos = 3 # Bucle de reintentos para el Failover.
         for intento in range(intentos):
             try:
-                # 1. Guarda al Dueño y usa flush() para obtener su ID.
+                # Guarda al Dueño y usa flush() para obtener su ID.
                 owner = Owner(name=request.form['owner_name'], phone=request.form.get('owner_phone'), email=request.form.get('owner_email'), address=request.form.get('owner_address'))
                 db.session.add(owner)
                 db.session.flush() 
                 
-                # 2. Guarda la Mascota.
+                # Guarda la Mascota.
                 age = request.form.get('pet_age')
                 weight = request.form.get('pet_weight')
-                
-                # CONVERSIÓN SEGURA: Si la edad o el peso están vacíos, guarda "None" (nulo) para evitar errores.
+                # CONVERSIÓN SEGURA: Evita error si los campos numéricos están vacíos.
                 pet = Pet(owner_id=owner.id, name=request.form['pet_name'], species=request.form.get('pet_species'), breed=request.form.get('pet_breed'), age=int(age) if age else None, weight=float(weight) if weight else None)
                 db.session.add(pet)
+                db.session.flush()
                 
-                # 3. Confirma todos los cambios en la base de datos.
+                # Captura y valida la fecha/hora de la cita.
+                appointment_str = request.form.get('appointment_date')
+                if appointment_str:
+                    # Convierte el string del input datetime-local a un objeto datetime.
+                    appointment_dt = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                else:
+                    appointment_dt = datetime.now()
+
+                # VALIDACIÓN DE DISPONIBILIDAD: Busca si el horario ya está ocupado.
+                cita_existente = Consultation.query.filter_by(appointment_date=appointment_dt).first()
+                if cita_existente:
+                    flash('Error: Este horario ya está ocupado. Por favor elige otro.', 'warning')
+                    db.session.rollback() # Deshace la creación para no dejar datos huérfanos.
+                    return redirect(url_for('registrar_paciente'))
+
+                # Guarda la consulta con la fecha de la cita.
+                consultation = Consultation(pet_id=pet.id, reason=request.form.get('reason'), diagnosis=request.form.get('diagnosis'), appointment_date=appointment_dt)
+                db.session.add(consultation)
+                
                 db.session.commit()
-                flash('Paciente registrado exitosamente!', 'success')
+                flash('Paciente y cita registrados exitosamente!', 'success')
                 return redirect(url_for('pacientes'))
             except Exception as e:
-                db.session.rollback() # Deshace cambios si hay error
-                # Si no es el último intento, espera 1 segundo para que HAProxy cambie de BD.
+                db.session.rollback() # Deshace cambios si hay error.
                 if intento < (intentos - 1):
-                    time.sleep(1) 
+                    time.sleep(1) # Espera 1s para que HAProxy cambie de BD.
                 else:
-                    flash(f'Error al registrar (se reintentó {intentos} veces): {str(e)}', 'danger')
+                    flash(f'Error al registrar: {str(e)}', 'danger')
     return render_template('index.html', hostname=socket.gethostname())
 
 # --- RUTA: LISTA DE PACIENTES ---
@@ -221,22 +294,30 @@ def pacientes():
 @app.route('/paciente/ver/<int:id>')
 @login_required
 def ver_paciente(id):
-    pet = Pet.query.get_or_404(id)
-    owner = Owner.query.get(pet.owner_id)
-    # Trae todas las consultas de la mascota, ordenadas de la más reciente a la más antigua.
-    consultas = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.consultation_date.desc()).all()
+    # Atrapa el error si la BD falla al cargar los datos.
+    try:
+        pet = Pet.query.get_or_404(id) # Busca mascota o lanza error 404.
+        owner = Owner.query.get(pet.owner_id) # Busca al dueño.
+        # Trae las consultas ordenadas por fecha descendente.
+        consultas = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).all()
+    except Exception:
+        db.session.rollback() # Limpia la conexión rota.
+        flash('Error de conexión. Recargue la página e intente de nuevo.', 'danger')
+        return redirect(url_for('pacientes')) # Redirige a la lista en vez de mostrar error 500.
+        
     return render_template('ver_paciente.html', pet=pet, owner=owner, consultas=consultas, hostname=socket.gethostname())
 
 # --- RUTA: EDITAR PACIENTE ---
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
+@permission_required('editar_pacientes')
 def editar_paciente(id):
-    # BLINDAJE: Atrapa el error si la base de datos falla justo al intentar cargar los datos para editar.
+    # Atrapa el error si la BD falla al cargar los datos.
     try:
         pet = Pet.query.get_or_404(id)
         owner = Owner.query.get(pet.owner_id)
-    except Exception as e:
-        flash('Error de conexión con la base de datos. Recargue la página e intente de nuevo.', 'danger')
+    except Exception:
+        flash('Error de conexión con la base de datos. Recargue la página.', 'danger')
         return redirect(url_for('pacientes'))
 
     if request.method == 'POST':
@@ -273,22 +354,17 @@ def editar_paciente(id):
 # --- RUTA: ELIMINAR PACIENTE ---
 @app.route('/paciente/eliminar/<int:id>')
 @login_required
+@permission_required('eliminar_pacientes')
 def eliminar_paciente(id):
-    # Solo admin y sistemas pueden borrar.
-    if session.get('role') not in ['admin', 'sistemas']:
-        flash('No tienes permiso para eliminar.', 'danger')
-        return redirect(url_for('pacientes'))
-    
     intentos = 3
     for intento in range(intentos):
         try:
             pet = Pet.query.get_or_404(id)
             owner = Owner.query.get(pet.owner_id)
             
-            # SOLUCIÓN AL ERROR 1451 (Llave foránea): 
-            # Primero se borran las consultas, luego la mascota y por último el dueño.
+            # SOLUCIÓN AL ERROR 1451: Borra las consultas (hijas) primero.
             Consultation.query.filter_by(pet_id=pet.id).delete()
-            db.session.flush() # Fuerza a MySQL a procesar el borrado de consultas AHORA.
+            db.session.flush() # Fuerza el borrado inmediato.
             
             db.session.delete(pet)
             db.session.flush()
@@ -305,15 +381,11 @@ def eliminar_paciente(id):
                 flash(f'Error al eliminar: {str(e)}', 'danger')
     return redirect(url_for('pacientes'))
 
-# --- RUTA: GESTIÓN DE USUARIOS (Crear y Listar) ---
+# --- RUTA: GESTIÓN DE USUARIOS ---
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
+@permission_required('gestionar_usuarios')
 def usuarios():
-    # Validación de roles.
-    if session.get('role') not in ['admin', 'sistemas']:
-        flash('Acceso denegado.', 'danger')
-        return redirect(url_for('inicio'))
-
     if request.method == 'POST':
         intentos = 3
         for intento in range(intentos):
@@ -326,33 +398,32 @@ def usuarios():
                 db.session.add(nuevo_user)
                 db.session.commit()
                 flash('Usuario creado exitosamente!', 'success')
-                break # Rompe el bucle si se guardó con éxito
+                break
             except Exception:
                 db.session.rollback()
                 if intento < (intentos - 1):
                     time.sleep(1)
                 else:
-                    flash('Error al crear el usuario (quizás ya existe o falló la red).', 'danger')
+                    flash('Error al crear el usuario.', 'danger')
     
     try:
         lista_users = User.query.all()
+        lista_roles = Role.query.all() # Trae los roles de la BD.
     except Exception:
         lista_users = []
-    return render_template('usuarios.html', usuarios=lista_users, hostname=socket.gethostname())
+        lista_roles = []
+    return render_template('usuarios.html', usuarios=lista_users, roles=lista_roles, hostname=socket.gethostname())
 
 # --- RUTA: EDITAR USUARIO ---
 @app.route('/usuario/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
+@permission_required('gestionar_usuarios')
 def editar_usuario(id):
-    if session.get('role') not in ['admin', 'sistemas']:
-        flash('Acceso denegado.', 'danger')
-        return redirect(url_for('usuarios'))
-
-    # BLINDAJE: Atrapa el error si hay un micro-corte al buscar al usuario.
     try:
         user = User.query.get_or_404(id)
-    except Exception as e:
-        flash('Error de conexión con la base de datos. Recargue la página e intente de nuevo.', 'danger')
+        lista_roles = Role.query.all() # Trae roles para el select.
+    except Exception:
+        flash('Error de conexión con la base de datos.', 'danger')
         return redirect(url_for('usuarios'))
     
     if request.method == 'POST':
@@ -360,17 +431,16 @@ def editar_usuario(id):
         for intento in range(intentos):
             try:
                 nuevo_username = request.form['username']
-                
-                # VALIDACIÓN: Si el nombre ya existe y es de otro usuario, lanza error.
+                # Valida que el nombre no esté en uso.
                 usuario_existente = User.query.filter_by(username=nuevo_username).first()
                 if usuario_existente and usuario_existente.id != user.id:
-                    flash('El nombre de usuario ya está en uso. Elige otro.', 'danger')
+                    flash('El nombre de usuario ya está en uso.', 'danger')
                     return redirect(url_for('editar_usuario', id=user.id))
 
                 user.username = nuevo_username
                 user.role = request.form['role']
                 
-                # Solo actualiza la contraseña si se escribió algo nuevo en el campo.
+                # Solo actualiza la contraseña si se escribió una nueva.
                 new_password = request.form.get('password')
                 if new_password:
                     user.password_hash = generate_password_hash(new_password)
@@ -385,17 +455,14 @@ def editar_usuario(id):
                 else:
                     flash(f'Error al actualizar usuario: {str(e)}', 'danger')
             
-    return render_template('editar_usuario.html', user=user, hostname=socket.gethostname())
+    return render_template('editar_usuario.html', user=user, roles=lista_roles, hostname=socket.gethostname())
 
 # --- RUTA: ELIMINAR USUARIO ---
 @app.route('/usuario/eliminar/<int:id>')
 @login_required
+@permission_required('gestionar_usuarios')
 def eliminar_usuario(id):
-    if session.get('role') not in ['admin', 'sistemas']:
-        flash('Acceso denegado.', 'danger')
-        return redirect(url_for('usuarios'))
-
-    # Protección: Evita que el usuario logueado se borre a sí mismo.
+    # Protección: Evita que te borres a ti mismo.
     if id == session.get('user_id'):
         flash('No puedes eliminar tu propio usuario activo.', 'warning')
         return redirect(url_for('usuarios'))
@@ -416,6 +483,50 @@ def eliminar_usuario(id):
                 flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
 
     return redirect(url_for('usuarios'))
+
+# --- RUTA: GESTIÓN DE ROLES ---
+@app.route('/roles', methods=['GET', 'POST'])
+@login_required
+@permission_required('gestionar_usuarios')
+def roles():
+    if request.method == 'POST':
+        try:
+            name = request.form['role_name']
+            # Captura las casillas de verificación marcadas.
+            permissions = request.form.getlist('permissions')
+            # Convierte la lista a un string separado por coma.
+            perms_str = ','.join(permissions) if permissions else 'ninguno'
+            
+            nuevo_role = Role(name=name, permissions=perms_str)
+            db.session.add(nuevo_role)
+            db.session.commit()
+            flash('Rol creado exitosamente!', 'success')
+            return redirect(url_for('roles'))
+        except Exception:
+            db.session.rollback()
+            flash('Error al crear el rol (quizás ya existe).', 'danger')
+            
+    lista_roles = Role.query.all()
+    return render_template('roles.html', roles=lista_roles, hostname=socket.gethostname())
+
+# --- RUTA: ELIMINAR ROL ---
+@app.route('/rol/eliminar/<int:id>')
+@login_required
+@permission_required('gestionar_usuarios')
+def eliminar_rol(id):
+    try:
+        rol = Role.query.get_or_404(id)
+        # Protege los roles base del sistema.
+        if rol.name in ['admin', 'sistemas']:
+            flash('No puedes eliminar los roles base del sistema.', 'warning')
+            return redirect(url_for('roles'))
+        db.session.delete(rol)
+        db.session.commit()
+        flash('Rol eliminado correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar el rol: {str(e)}', 'danger')
+    return redirect(url_for('roles'))
 
 # ==============================================================================
 # 7. ARRANQUE DEL SERVIDOR

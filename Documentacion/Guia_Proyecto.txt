@@ -33,8 +33,8 @@ sudo nano /etc/netplan/01-netcfg.yaml # Abre el archivo de configuración de red
 
 # Contenido del archivo (ejemplo para app-01):
 network:
-  version: 2
-  renderer: networkd
+  version: 2 # Versión del formato YAML.
+  renderer: networkd # Gestor de red nativo de Ubuntu.
   ethernets:
     enp0s3:
       dhcp4: yes # Interfaz NAT: pide IP automática al router para tener internet.
@@ -57,11 +57,11 @@ sudo nano /etc/hosts # Abre el archivo para mapear las IPs y nombres.
 # Contenido del archivo /etc/hosts:
 127.0.0.1       localhost
 127.0.1.1       app-01 # Nombre local de esta máquina
-192.168.56.10   lb-01
-192.168.56.11   app-01
-192.168.56.12   app-02
-192.168.56.13   db-01
-192.168.56.14   db-02
+192.168.56.10   lb-01 # IP del balanceador
+192.168.56.11   app-01 # IP de este servidor
+192.168.56.12   app-02 # IP del segundo servidor de app
+192.168.56.13   db-01 # IP de la base de datos principal
+192.168.56.14   db-02 # IP de la base de datos de respaldo
 
 sudo ping db-01 # Comprueba que la red y la resolución de nombres funcionan.
 
@@ -73,7 +73,7 @@ POSIBLES FALLOS Y SOLUCIONES:
 ═══════════════════════════════════════════════════════════════════════
 2. SERVIDORES DE BASE DE DATOS (db-01 y db-02)
 ═══════════════════════════════════════════════════════════════════════
-Objetivo: Replicación Maestro-Maestro.
+Objetivo: Configurar la replicación y las tablas para citas y roles.
 
 Paso 2.1: Instalación
 # Explicación: Actualiza el sistema e instala el servidor de base de datos MySQL.
@@ -113,11 +113,34 @@ Paso 2.4: Creación de Base de Datos y Tablas (Solo en db-01)
 CREATE DATABASE vet_clinic_db; # Crea la base de datos.
 USE vet_clinic_db; # Selecciona la base de datos.
 
-# Tablas (ejecuta uno por uno):
+# Tablas originales:
 CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, role VARCHAR(50) NOT NULL); # Tabla de usuarios.
 CREATE TABLE owners (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, phone VARCHAR(20), email VARCHAR(100), address VARCHAR(255)); # Tabla de dueños.
-CREATE TABLE pets (id INT AUTO_INCREMENT PRIMARY KEY, owner_id INT, name VARCHAR(100) NOT NULL, species VARCHAR(50), breed VARCHAR(50), age INT, weight DECIMAL(5,2), FOREIGN KEY (owner_id) REFERENCES owners(id)); # Tabla de mascotas con FK.
-CREATE TABLE consultations (id INT AUTO_INCREMENT PRIMARY KEY, pet_id INT, reason TEXT, diagnosis TEXT, consultation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (pet_id) REFERENCES pets(id)); # Tabla de consultas con FK.
+CREATE TABLE pets (id INT AUTO_INCREMENT PRIMARY KEY, owner_id INT, name VARCHAR(100) NOT NULL, species VARCHAR(50), breed VARCHAR(50), age INT, weight DECIMAL(5,2), FOREIGN KEY (owner_id) REFERENCES owners(id)); # Tabla de mascotas.
+
+# Tabla de consultas con fecha y hora de la cita.
+CREATE TABLE consultations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pet_id INT,
+    reason TEXT,
+    diagnosis TEXT,
+    appointment_date DATETIME NOT NULL, # Almacena la fecha y hora exacta de la cita.
+    FOREIGN KEY (pet_id) REFERENCES pets(id)
+);
+
+# Tabla de roles para permisos dinámicos.
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL, # Nombre del rol (ej. secretaria).
+    permissions TEXT NOT NULL # Guarda los permisos separados por coma.
+);
+
+# Inserta los roles base del sistema.
+INSERT IGNORE INTO roles (name, permissions) VALUES 
+('admin', 'all'),
+('sistemas', 'all'),
+('veterinario', 'ver_pacientes,editar_pacientes'),
+('recepcionista', 'ver_pacientes,crear_pacientes');
 
 Paso 2.5: Vincular Maestros
 # Explicación: Conecta ambos servidores para que se copien los datos mutuamente.
@@ -337,6 +360,10 @@ E. Al editar campos se genera error 500:
 F. No se puede eliminar un paciente (Error 1451):
    - Causa: El paciente tiene consultas médicas asociadas (llave foránea).
    - Solución: Borrar las consultas primero y usar db.session.flush().
+
+G. No aparece el aviso cuando un usuario sin permisos entra a una sección:
+   - Causa: Antes se usaba flash() y redirect(), lo que hacía que la página cambiara y el mensaje apareciera después.
+   - Solución: Se modificó el decorador @permission_required en app.py para que devuelva un script de JavaScript que lanza una alerta inmediata (alert()) y devuelve al usuario a la página anterior (history.back()).
 
 ═══════════════════════════════════════════════════════════════════════
 FIN DE LA GUÍA DE PROCESO
