@@ -27,43 +27,45 @@ Paso 1.2: Configurar Adaptadores en cada VM
 - Adaptador 2: Host-Only (para la red interna del proyecto).
 
 Paso 1.3: Asignar IPs Estáticas (Netplan)
-# Explicación: Asigna una dirección IP fija a la tarjeta de red interna para que las máquinas se reconozcan.
-# Comandos:
-sudo nano /etc/netplan/01-netcfg.yaml # Abre el archivo de configuración de red.
+# Abre el archivo de configuración de red con permisos de superusuario.
+sudo nano /etc/netplan/01-netcfg.yaml
 
-# Contenido del archivo (ejemplo para app-01):
+# Contenido del archivo:
 network:
-  version: 2 # Versión del formato YAML.
-  renderer: networkd # Gestor de red nativo de Ubuntu.
+  version: 2 # Versión del formato YAML que usa Ubuntu.
+  renderer: networkd # Gestor de red nativo de Ubuntu (systemd-networkd).
   ethernets:
     enp0s3:
       dhcp4: yes # Interfaz NAT: pide IP automática al router para tener internet.
     enp0s8:
-      dhcp4: no # Interfaz Host-Only: IP fija para la red interna.
+      dhcp4: no # Interfaz Host-Only: NO pide IP automática, usará IP fija.
       addresses:
         - 192.168.56.11/24 # Asigna la IP estática y la máscara de subred.
       nameservers:
         addresses: [8.8.8.8, 1.1.1.1] # Servidores DNS de Google y Cloudflare.
 
-sudo chmod 600 /etc/netplan/01-netcfg.yaml # Permisos de seguridad para que solo root lea el archivo.
-sudo netplan apply # Aplica los cambios y activa la nueva IP.
+# Restringe los permisos del archivo para que solo root pueda leerlo (seguridad).
+sudo chmod 600 /etc/netplan/01-netcfg.yaml
+# Aplica los cambios de red y activa la nueva IP.
+sudo netplan apply
 
 Paso 1.4: Hostnames y /etc/hosts
-# Explicación: Asigna un nombre a cada servidor y le dice a las máquinas cómo encontrar a las demás.
-# Comandos:
-sudo hostnamectl set-hostname app-01 # Cambia el nombre del servidor (ej. app-01, db-01).
-sudo nano /etc/hosts # Abre el archivo para mapear las IPs y nombres.
+# Cambia el nombre del servidor para que coincida con su rol (ej. app-01).
+sudo hostnamectl set-hostname app-01
+# Abre el archivo de mapeo de nombres de dominio locales.
+sudo nano /etc/hosts
 
 # Contenido del archivo /etc/hosts:
 127.0.0.1       localhost
-127.0.1.1       app-01 # Nombre local de esta máquina
-192.168.56.10   lb-01 # IP del balanceador
-192.168.56.11   app-01 # IP de este servidor
-192.168.56.12   app-02 # IP del segundo servidor de app
-192.168.56.13   db-01 # IP de la base de datos principal
-192.168.56.14   db-02 # IP de la base de datos de respaldo
+127.0.1.1       app-01 # Nombre local de esta máquina.
+192.168.56.10   lb-01 # IP del balanceador.
+192.168.56.11   app-01 # IP de este servidor.
+192.168.56.12   app-02 # IP del segundo servidor de app.
+192.168.56.13   db-01 # IP de la base de datos principal.
+192.168.56.14   db-02 # IP de la base de datos de respaldo.
 
-sudo ping db-01 # Comprueba que la red y la resolución de nombres funcionan.
+# Comprueba que la red y la resolución de nombres funcionan.
+sudo ping db-01
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -72,66 +74,64 @@ sudo ping db-01 # Comprueba que la red y la resolución de nombres funcionan.
 Objetivo: Configurar la replicación y las tablas para citas y bitácora.
 
 Paso 2.1: Instalación
-# Explicación: Actualiza el sistema e instala el servidor de base de datos MySQL.
-sudo apt update # Actualiza la lista de paquetes disponibles.
-sudo apt install mysql-server -y # Instala MySQL sin pedir confirmación.
+# Actualiza la lista de paquetes disponibles en el repositorio.
+sudo apt update
+# Instala el servidor de base de datos MySQL sin pedir confirmación.
+sudo apt install mysql-server -y
 
 Paso 2.2: Configuración de mysqld.cnf
-# Explicación: Configura MySQL para aceptar conexiones externas y preparar la replicación.
-sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf # Abre el archivo de configuración.
+# Abre el archivo de configuración de MySQL.
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
 
-# Agrega debajo de [mysqld]:
+# Agrega debajo de la sección [mysqld]:
 [mysqld]
 server-id = 1 # Identificador único del servidor. En db-01 es 1, en db-02 es 2.
-bind-address = 0.0.0.0 # Permite que MySQL acepte conexiones desde cualquier IP (necesario para HAProxy).
-max_connect_errors = 100000 # Aumenta el límite de errores de red para evitar bloqueos.
+bind-address = 0.0.0.0 # Permite que MySQL acepte conexiones desde cualquier IP.
+max_connect_errors = 100000 # Aumenta el límite de errores de red para evitar bloqueos de IP.
 
-sudo systemctl restart mysql # Reinicia el servicio para aplicar los cambios.
+# Reinicia el servicio de MySQL para aplicar los cambios.
+sudo systemctl restart mysql
 
 Paso 2.3: Creación de Usuarios
-# Explicación: Crea los usuarios necesarios para la replicación y para que la app se conecte.
-sudo mysql # Entra a la consola de MySQL como administrador.
+# Entra a la consola interactiva de MySQL como administrador del sistema.
+sudo mysql
 
-# Usuario para la replicación:
-CREATE USER 'replicator'@'%' IDENTIFIED WITH caching_sha2_password BY 'ReplicaPass123!'; # Crea usuario replicador.
-GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%'; # Le da permiso para copiar datos.
+# Crea el usuario para la replicación.
+CREATE USER 'replicator'@'%' IDENTIFIED WITH caching_sha2_password BY 'ReplicaPass123!';
+# Le otorga el permiso específico para copiar datos entre bases.
+GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%';
 
-# Usuario para la aplicación:
-CREATE USER 'app_user'@'%' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!'; # Crea usuario de la app.
-CREATE USER 'app_user'@'192.168.56.10' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!'; # Permite que HAProxy se conecte.
-GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'%'; # Da permisos totales en la base.
-GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'192.168.56.10'; # Permisos específicos para HAProxy.
-FLUSH PRIVILEGES; # Recarga los permisos.
-EXIT; # Sale de MySQL.
+# Crea el usuario para la aplicación.
+CREATE USER 'app_user'@'%' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!';
+# Crea un acceso específico para cuando la petición viene desde la IP de HAProxy.
+CREATE USER 'app_user'@'192.168.56.10' IDENTIFIED WITH caching_sha2_password BY 'AppPass123!';
+# Otorga todos los privilegios sobre la base de datos de la veterinaria.
+GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'%';
+# Otorga privilegios para el acceso específico desde HAProxy.
+GRANT ALL PRIVILEGES ON vet_clinic_db.* TO 'app_user'@'192.168.56.10';
+# Recarga los permisos en memoria para que se apliquen inmediatamente.
+FLUSH PRIVILEGES;
+# Sale de la consola de MySQL.
+EXIT;
 
 Paso 2.4: Creación de Base de Datos y Tablas (Solo en db-01)
-# Explicación: Crea la base de datos y las tablas donde se guardará la información.
-CREATE DATABASE vet_clinic_db; # Crea la base de datos.
-USE vet_clinic_db; # Selecciona la base de datos.
+# Crea la base de datos del proyecto.
+CREATE DATABASE vet_clinic_db;
+# Selecciona la base de datos para trabajar dentro de ella.
+USE vet_clinic_db;
 
-# Tablas originales:
-CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, role VARCHAR(50) NOT NULL); # Tabla de usuarios.
-CREATE TABLE owners (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, phone VARCHAR(20), email VARCHAR(100), address VARCHAR(255)); # Tabla de dueños.
-CREATE TABLE pets (id INT AUTO_INCREMENT PRIMARY KEY, owner_id INT, name VARCHAR(100) NOT NULL, species VARCHAR(50), breed VARCHAR(50), age INT, weight DECIMAL(5,2), FOREIGN KEY (owner_id) REFERENCES owners(id)); # Tabla de mascotas.
+# Tabla de usuarios del sistema.
+CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, role VARCHAR(50) NOT NULL);
+# Tabla de dueños de mascotas.
+CREATE TABLE owners (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, phone VARCHAR(20), email VARCHAR(100), address VARCHAR(255));
+# Tabla de mascotas.
+CREATE TABLE pets (id INT AUTO_INCREMENT PRIMARY KEY, owner_id INT, name VARCHAR(100) NOT NULL, species VARCHAR(50), breed VARCHAR(50), age INT, weight DECIMAL(5,2), FOREIGN KEY (owner_id) REFERENCES owners(id));
+# Tabla de consultas médicas.
+CREATE TABLE consultations (id INT AUTO_INCREMENT PRIMARY KEY, pet_id INT, reason TEXT, diagnosis TEXT, appointment_date DATETIME NOT NULL, FOREIGN KEY (pet_id) REFERENCES pets(id));
+# Tabla de roles del sistema.
+CREATE TABLE roles (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) UNIQUE NOT NULL, permissions TEXT NOT NULL);
 
-# Tabla de consultas con fecha y hora de la cita.
-CREATE TABLE consultations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    pet_id INT,
-    reason TEXT,
-    diagnosis TEXT,
-    appointment_date DATETIME NOT NULL, # Almacena la fecha y hora exacta de la cita.
-    FOREIGN KEY (pet_id) REFERENCES pets(id)
-);
-
-# Tabla de roles para permisos dinámicos.
-CREATE TABLE roles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL, # Nombre del rol (ej. secretaria).
-    permissions TEXT NOT NULL # Guarda los permisos separados por coma.
-);
-
-# Tabla NUEVA para la Bitácora.
+# Tabla de bitácora (notas del personal).
 CREATE TABLE bitacora (
     id INT AUTO_INCREMENT PRIMARY KEY,
     pet_id INT NOT NULL,
@@ -141,23 +141,25 @@ CREATE TABLE bitacora (
     FOREIGN KEY (pet_id) REFERENCES pets(id) ON DELETE CASCADE
 );
 
-# Inserta los roles base del sistema.
-INSERT IGNORE INTO roles (name, permissions) VALUES 
+# Inserta los roles por defecto.
+INSERT IGNORE INTO roles (name, permissions) VALUES
 ('admin', 'all'),
 ('sistemas', 'all'),
 ('veterinario', 'ver_pacientes,editar_pacientes'),
 ('recepcionista', 'ver_pacientes,crear_pacientes');
 
 Paso 2.5: Vincular Maestros
-# Explicación: Conecta ambos servidores para que se copien los datos mutuamente.
-# (En db-01): 
-SHOW BINARY LOG STATUS; # Obtiene la posición actual del registro (Anotar File y Position).
+# Obtiene la posición actual del registro binario (Anotar File y Position).
+SHOW BINARY LOG STATUS;
 
-# (En db-02):
-STOP REPLICA; # Detiene cualquier replicación previa.
-RESET REPLICA ALL; # Borra la configuración anterior.
-CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.56.13', SOURCE_USER='replicator', SOURCE_PASSWORD='ReplicaPass123!', SOURCE_LOG_FILE='[File_db01]', SOURCE_LOG_POS=[Pos_db01], GET_SOURCE_PUBLIC_KEY=1; # Configura db-02 para copiar de db-01.
-START REPLICA; # Inicia la replicación.
+# Detiene cualquier replicación previa.
+STOP REPLICA;
+# Borra cualquier configuración anterior de replicación.
+RESET REPLICA ALL;
+# Configura db-02 para copiar de db-01 usando la IP, usuario y posición.
+CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.56.13', SOURCE_USER='replicator', SOURCE_PASSWORD='ReplicaPass123!', SOURCE_LOG_FILE='[File_db01]', SOURCE_LOG_POS=[Pos_db01], GET_SOURCE_PUBLIC_KEY=1;
+# Inicia la replicación.
+START REPLICA;
 # (Hacer lo mismo en db-01 apuntando los datos a la IP de db-02).
 
 
@@ -167,19 +169,24 @@ START REPLICA; # Inicia la replicación.
 Objetivo: Correr Flask con Gunicorn como servicio.
 
 Paso 3.1: Instalar dependencias
-sudo apt install python3-pip python3-venv python3-full git -y # Instala Python, pip, entorno virtual y Git.
+# Instala Python, pip, herramientas de entorno virtual y Git.
+sudo apt install python3-pip python3-venv python3-full git -y
 
 Paso 3.2: Descargar proyecto
-# Explicación: Descarga el código fuente de la aplicación desde GitHub.
-git clone https://github.com/emersonorlando7-cloud/VetSystem_APP.git # Descarga el repositorio.
-cd VetSystem_APP # Entra a la carpeta del proyecto.
-python3 -m venv venv # Crea un entorno virtual aislado.
-source venv/bin/activate # Activa el entorno virtual.
-pip install flask flask-sqlalchemy pymysql gunicorn # Instala las librerías necesarias.
+# Clona el repositorio de GitHub con el código de la aplicación.
+git clone https://github.com/emersonorlando7-cloud/VetSystem_APP.git
+# Entra a la carpeta del proyecto.
+cd VetSystem_APP
+# Crea un entorno virtual aislado para no ensuciar el Python del sistema.
+python3 -m venv venv
+# Activa el entorno virtual.
+source venv/bin/activate
+# Instala las librerías necesarias para el proyecto.
+pip install flask flask-sqlalchemy pymysql gunicorn
 
 Paso 3.3: Crear Servicio Systemd
-# Explicación: Convierte la aplicación en un servicio de Linux para que arranque automáticamente.
-sudo nano /etc/systemd/system/vetsystem.service # Crea el archivo de configuración.
+# Crea el archivo de configuración del servicio.
+sudo nano /etc/systemd/system/vetsystem.service
 
 # Contenido del archivo:
 [Unit]
@@ -187,19 +194,22 @@ Description=Gunicorn instance to serve VetSystem # Descripción del servicio.
 After=network.target # Espera a que la red esté lista antes de arrancar.
 
 [Service]
-User=servidorjefferson # Cambiar por el usuario real (servidorangel en app-02).
+User=servidorjefferson # Usuario del sistema que ejecuta el servicio (cambiar según la VM).
 Group=www-data # Grupo del sistema web.
 WorkingDirectory=/home/servidorjefferson/VetSystem_APP # Ruta de la carpeta del proyecto.
 Environment="PATH=/home/servidorjefferson/VetSystem_APP/venv/bin" # Ruta del entorno virtual.
-ExecStart=/home/servidorjefferson/VetSystem_APP/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 app:app # Comando que inicia Flask.
+ExecStart=/home/servidorjefferson/VetSystem_APP/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 app:app # Comando que inicia Gunicorn con 3 workers en el puerto 5000.
 Restart=always # Si falla, se reinicia automáticamente.
 
 [Install]
 WantedBy=multi-user.target # Se inicia al encender la máquina.
 
-sudo systemctl daemon-reload # Recarga los servicios del sistema.
-sudo systemctl start vetsystem # Inicia la aplicación.
-sudo systemctl enable vetsystem # Habilita el arranque automático.
+# Recarga los servicios del sistema para que detecte el nuevo archivo.
+sudo systemctl daemon-reload
+# Inicia el servicio de la aplicación.
+sudo systemctl start vetsystem
+# Habilita el arranque automático al reiniciar la máquina.
+sudo systemctl enable vetsystem
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -208,11 +218,12 @@ sudo systemctl enable vetsystem # Habilita el arranque automático.
 Objetivo: Distribuir carga web y dar Failover a la BD.
 
 Paso 4.1: Instalar HAProxy
-sudo apt install haproxy -y # Instala HAProxy.
+# Instala el balanceador de carga HAProxy.
+sudo apt install haproxy -y
 
 Paso 4.2: Configurar
-# Explicación: Configura HAProxy para repartir tráfico web y conmutar la base de datos.
-sudo nano /etc/haproxy/haproxy.cfg # Abre el archivo de configuración.
+# Abre el archivo de configuración de HAProxy.
+sudo nano /etc/haproxy/haproxy.cfg
 
 # Contenido del archivo:
 global
@@ -220,7 +231,7 @@ global
     maxconn 4096 # Límite máximo de conexiones simultáneas.
     user haproxy # Usuario con el que corre el servicio.
     group haproxy # Grupo del servicio.
-    daemon # Corre en segundo plano.
+    daemon # Corre en segundo plano como demonio.
 
 defaults
     log global # Usa la configuración global de logs.
@@ -236,33 +247,35 @@ frontend web_frontend
 
 backend web_servers
     balance roundrobin # Alterna las peticiones entre app-01 y app-02.
-    cookie SERVERID insert indirect nocache # IMPORTANTE: Mantiene la sesión pegada al servidor para no cerrar sesión.
-    option httpchk GET / # Verifica que la app responda (HTTP 200).
-    server app-01 192.168.56.11:5000 check cookie s1 # Servidor 1 (verifica estado y le asigna cookie s1).
-    server app-02 192.168.56.12:5000 check cookie s2 # Servidor 2 (verifica estado y le asigna cookie s2).
+    cookie SERVERID insert indirect nocache # Mantiene la sesión pegada al servidor que la creó.
+    option httpchk GET / # Verifica que la aplicación responda a peticiones HTTP.
+    server app-01 192.168.56.11:5000 check cookie s1 # Servidor 1 (le asigna cookie s1).
+    server app-02 192.168.56.12:5000 check cookie s2 # Servidor 2 (le asigna cookie s2).
 
 frontend mysql_frontend
     bind *:3306 # Escucha en el puerto de MySQL.
-    mode tcp # Modo de tráfico TCP (para bases de datos).
+    mode tcp # Modo de tráfico TCP para bases de datos.
     default_backend mysql_servers # Envía el tráfico al backend de bases.
 
 backend mysql_servers
     mode tcp # Tráfico TCP.
-    balance first # Usa siempre db-01. Si falla, usa db-02.
-    option tcp-check # Verifica que el puerto esté abierto.
+    balance first # Usa siempre db-01 como principal.
+    option tcp-check # Verifica que el puerto de la base esté abierto.
     timeout server 60s # Tiempo de espera para la base de datos.
     server db-01 192.168.56.13:3306 check # Base principal.
-    server db-02 192.168.56.14:3306 check backup # Base de respaldo.
+    server db-02 192.168.56.14:3306 check backup # Base de respaldo (solo se usa si db-01 falla).
 
 listen stats
-    bind *:8080 # Escucha en el puerto 8080 para las estadísticas.
+    bind *:8080 # Escucha en el puerto 8080 para el panel web.
     mode http # Tráfico web.
     stats enable # Habilita el panel de estadísticas.
-    stats uri /stats # URL para acceder (/stats).
-    stats auth emerson:@dm1n! # Usuario y contraseña de acceso.
+    stats uri /stats # URL para acceder al panel.
+    stats auth emerson:@dm1n! # Usuario y contraseña de acceso al panel.
 
-sudo haproxy -c -f /etc/haproxy/haproxy.cfg # Valida que el archivo no tenga errores.
-sudo systemctl restart haproxy # Reinicia HAProxy para aplicar los cambios.
+# Valida que el archivo de configuración no tenga errores de sintaxis.
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+# Reinicia HAProxy para aplicar la nueva configuración.
+sudo systemctl restart haproxy
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -271,21 +284,32 @@ sudo systemctl restart haproxy # Reinicia HAProxy para aplicar los cambios.
 Objetivo: Permitir solo el tráfico necesario.
 
 En db-01 y db-02:
-sudo ufw allow 22/tcp # Permite conexiones SSH.
-sudo ufw allow from 192.168.56.10 to any port 3306 # Permite solo a HAProxy acceder a MySQL.
-sudo ufw enable # Activa el firewall.
+# Permite conexiones SSH para administración.
+sudo ufw allow 22/tcp
+# Permite el acceso a MySQL solo desde la IP del balanceador.
+sudo ufw allow from 192.168.56.10 to any port 3306
+# Activa el firewall.
+sudo ufw enable
 
 En app-01 y app-02:
-sudo ufw allow 22/tcp # Permite conexiones SSH.
-sudo ufw allow 5000/tcp # Permite el tráfico de la aplicación Flask.
-sudo ufw enable # Activa el firewall.
+# Permite conexiones SSH.
+sudo ufw allow 22/tcp
+# Permite el tráfico web de la aplicación Flask.
+sudo ufw allow 5000/tcp
+# Activa el firewall.
+sudo ufw enable
 
 En lb-01:
-sudo ufw allow 22/tcp # Permite conexiones SSH.
-sudo ufw allow 80/tcp # Permite el tráfico web público.
-sudo ufw allow 3306/tcp # Permite el tráfico hacia las bases de datos.
-sudo ufw allow 8080/tcp # Permite el acceso al panel de estadísticas.
-sudo ufw enable # Activa el firewall.
+# Permite conexiones SSH.
+sudo ufw allow 22/tcp
+# Permite el tráfico web público.
+sudo ufw allow 80/tcp
+# Permite el tráfico hacia las bases de datos.
+sudo ufw allow 3306/tcp
+# Permite el acceso al panel de estadísticas.
+sudo ufw allow 8080/tcp
+# Activa el firewall.
+sudo ufw enable
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -294,33 +318,41 @@ sudo ufw enable # Activa el firewall.
 Objetivo: Dar un enlace público a lb-01 sin abrir puertos en el router.
 
 Instalación en lb-01:
-wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz # Descarga Ngrok.
-tar -xvzf ngrok-v3-stable-linux-amd64.tgz # Descomprime el archivo.
-sudo mv ngrok /usr/local/bin/ # Mueve el ejecutable a una carpeta del sistema.
+# Descarga el ejecutable de Ngrok.
+wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+# Descomprime el archivo descargado.
+tar -xvzf ngrok-v3-stable-linux-amd64.tgz
+# Mueve el ejecutable a una carpeta del sistema para poder usarlo globalmente.
+sudo mv ngrok /usr/local/bin/
 
 Autenticación:
-ngrok config add-authtoken TU_TOKEN_AQUI # Guarda tu token de autenticación.
+# Guarda tu token de autenticación personal de Ngrok.
+ngrok config add-authtoken TU_TOKEN_AQUI
 
 Servicio permanente:
-sudo nano /etc/systemd/system/ngrok.service # Crea el archivo de servicio.
+# Crea el archivo de servicio para que Ngrok se ejecute siempre.
+sudo nano /etc/systemd/system/ngrok.service
 
 # Contenido del archivo:
 [Unit]
-Description=Ngrok Tunnel for VetSystem # Descripción.
-After=network.target # Espera a la red.
+Description=Ngrok Tunnel for VetSystem # Descripción del servicio.
+After=network.target # Espera a que la red esté lista.
 
 [Service]
-User=servidoremerson # Usuario de lb-01.
-ExecStart=/usr/local/bin/ngrok http 80 --url=https://tu-dominio.ngrok-free.dev # Comando que abre el túnel al puerto 80 con dominio fijo.
+User=servidoremerson # Usuario que ejecuta el servicio en lb-01.
+ExecStart=/usr/local/bin/ngrok http 80 --url=https://tu-dominio.ngrok-free.dev # Abre el túnel al puerto 80 con dominio fijo.
 Restart=always # Si se cae, se reinicia.
-RestartSec=10 # Espera 10s antes de reiniciar.
+RestartSec=10 # Espera 10 segundos antes de reiniciar.
 
 [Install]
 WantedBy=multi-user.target # Arranca con el sistema.
 
-sudo systemctl daemon-reload # Recarga el sistema.
-sudo systemctl enable ngrok # Habilita el arranque automático.
-sudo systemctl start ngrok # Inicia el túnel.
+# Recarga el sistema de servicios.
+sudo systemctl daemon-reload
+# Habilita el arranque automático.
+sudo systemctl enable ngrok
+# Inicia el túnel ahora.
+sudo systemctl start ngrok
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -331,24 +363,24 @@ A. "504 Gateway Timeout" o página no carga:
    - Solución: Verificar que vetsystem.service esté activo en app-01 y app-02.
 
 B. Error 500 en Flask (Pantalla blanca):
-   - Causa: Error interno en el código (ej. campos vacíos).
-   - Solución: Agregar try...except en app.py. Revisar journalctl -u vetsystem -n 50.
+   - Causa: Error interno en el código.
+   - Solución: Revisar logs con journalctl -u vetsystem -n 50.
 
 C. La sesión se cierra al crear o borrar datos:
-   - Causa: El navegador no reconoce la cookie porque HAProxy está saltando de app-01 a app-02.
-   - Solución: Tener las líneas "cookie SERVERID" en HAProxy (Paso 4.2) y borrar las cookies viejas del navegador (Ctrl+Shift+Delete).
+   - Causa: El navegador no reconoce la cookie porque HAProxy salta de app-01 a app-02.
+   - Solución: Tener las líneas "cookie SERVERID" en HAProxy y borrar las cookies viejas del navegador.
 
 D. "Citas para hoy" no muestran nada:
    - Causa: Desfase de horas entre la VM y tu hora local.
-   - Solución: Ejecutar `sudo timedatectl set-timezone America/Guatemala` en app-01 y app-02, y luego reiniciar vetsystem.
+   - Solución: Ejecutar `sudo timedatectl set-timezone America/Guatemala` en app-01 y app-02.
 
 E. Al editar campos se genera error 500:
    - Causa: Dejar vacíos los campos de Edad o Peso (columnas numéricas).
-   - Solución: Convertir a None si están vacíos: pet.age = int(age) if age else None (ya implementado en app.py).
+   - Solución: Convertir a None si están vacíos: pet.age = int(age) if age else None.
 
 F. No se puede eliminar un paciente (Error 1451):
-   - Causa: El paciente tiene consultas médicas o bitácora asociadas (llave foránea).
-   - Solución: El código actual ya borra las tablas hijas antes de eliminar a la mascota.
+   - Causa: El paciente tiene consultas o bitácora asociadas.
+   - Solución: El código actual ya borra las tablas hijas antes de eliminar la mascota.
 
 ═══════════════════════════════════════════════════════════════════════
 FIN DE LA GUÍA DE PROCESO

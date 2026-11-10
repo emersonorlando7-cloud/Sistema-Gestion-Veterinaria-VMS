@@ -15,25 +15,34 @@ PLANTILLA: templates/inicio.html (Panel de Control)
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <!-- Título que aparece en la pestaña del navegador. -->
     <title>Inicio - VetSystem</title>
-    <!-- Bootstrap para estilos visuales -->
+    <!-- Hoja de estilos de Bootstrap 5.3.3 vía CDN. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Fuente de iconos Bootstrap Icons v1.11.3 vía CDN. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<!-- Menú superior (Navbar) -->
+<!-- Barra de navegación superior con fondo azul oscuro. -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
+        <!-- Logo y nombre de la marca. -->
         <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
         <div class="navbar-nav me-auto">
-            <!-- url_for genera las rutas automáticamente -->
+            <!-- Enlace a Inicio (activo). -->
             <a class="nav-link active" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <!-- Enlace a Registrar. -->
             <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <!-- Enlace a Pacientes. -->
             <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <!-- Enlace a Usuarios. -->
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <!-- Enlace a Roles. -->
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <!-- Enlace al panel de diagnóstico del sistema. -->
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
-        <!-- Botón de Salir agregado para cerrar sesión -->
+        <!-- Sección derecha con el nombre de usuario y botón de cerrar sesión. -->
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
@@ -44,19 +53,20 @@ PLANTILLA: templates/inicio.html (Panel de Control)
 <main class="container my-4">
     <h2 class="mb-4"><i class="bi bi-speedometer2 text-primary"></i> Panel de Control</h2>
     <div class="row g-3 mb-4">
-        <!-- Tarjeta: Total Pacientes -->
+        <!-- Tarjeta de total de pacientes. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted mb-1 small text-uppercase fw-semibold">Total Pacientes</p>
+                        <!-- Imprime la variable enviada desde Flask. -->
                         <h3 class="mb-0 fw-bold">{{ total_pacientes }}</h3>
                     </div>
                     <div class="bg-primary bg-opacity-10 rounded-circle p-3"><i class="bi bi-heart-pulse fs-4 text-primary"></i></div>
                 </div>
             </div>
         </div>
-        <!-- Tarjeta: Total Dueños -->
+        <!-- Tarjeta de total de dueños. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -68,7 +78,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                 </div>
             </div>
         </div>
-        <!-- Tarjeta: Consultas Totales -->
+        <!-- Tarjeta de consultas totales. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -80,7 +90,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                 </div>
             </div>
         </div>
-        <!-- Tarjeta: Citas para Hoy -->
+        <!-- Tarjeta de citas de hoy. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -94,7 +104,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 
-    <!-- Tabla: Agenda de Hoy -->
+    <!-- Tabla de Agenda de Hoy -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-white fw-bold"><i class="bi bi-clock-history"></i> Agenda de Hoy</div>
         <div class="table-responsive">
@@ -103,14 +113,16 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                     <tr><th>Hora</th><th>Mascota</th><th>Dueño</th><th>Motivo</th></tr>
                 </thead>
                 <tbody>
+                    <!-- Bucle Jinja2: recorre la lista de citas de hoy. -->
                     {% for cita, pet, owner in citas_hoy %}
                     <tr>
-                        <!-- strftime('%H:%M') muestra solo la hora (HH:MM) -->
+                        <!-- Formatea la fecha de Python a solo hora HH:MM. -->
                         <td><strong>{{ cita.appointment_date.strftime('%H:%M') }}</strong></td>
                         <td>{{ pet.name }}</td>
                         <td>{{ owner.name }}</td>
                         <td>{{ cita.reason }}</td>
                     </tr>
+                    <!-- Si la lista está vacía, muestra este mensaje. -->
                     {% else %}
                     <tr><td colspan="4" class="text-center text-muted py-4">No hay citas programadas para hoy.</td></tr>
                     {% endfor %}
@@ -119,7 +131,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 
-    <!-- Tabla: Próximas Citas (Futuras) -->
+    <!-- Tabla de Próximas Citas Futuras -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-white fw-bold"><i class="bi bi-calendar-plus"></i> Próximas Citas (Futuras)</div>
         <div class="table-responsive">
@@ -128,20 +140,118 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                     <tr><th>Fecha y Hora</th><th>Mascota</th><th>Dueño</th><th>Motivo</th></tr>
                 </thead>
                 <tbody>
+                    <!-- Bucle Jinja2: recorre la lista de citas futuras. -->
                     {% for cita, pet, owner in citas_futuras %}
                     <tr>
-                        <!-- strftime('%d/%m/%Y %H:%M') muestra la fecha y hora exacta -->
+                        <!-- Formatea la fecha a DD/MM/AAAA HH:MM. -->
                         <td><strong>{{ cita.appointment_date.strftime('%d/%m/%Y %H:%M') }}</strong></td>
                         <td>{{ pet.name }}</td>
                         <td>{{ owner.name }}</td>
                         <td>{{ cita.reason }}</td>
                     </tr>
+                    <!-- Si la lista está vacía, muestra este mensaje. -->
                     {% else %}
                     <tr><td colspan="4" class="text-center text-muted py-4">No hay citas futuras programadas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+    </div>
+</main>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/estado.html (Panel de Diagnóstico)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Estado del Sistema - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <!-- Enlace activo en esta página. -->
+            <a class="nav-link active" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-5">
+    <!-- Título central. -->
+    <div class="text-center mb-5">
+        <h2><i class="bi bi-activity text-primary"></i> Estado del Sistema en Tiempo Real</h2>
+        <p class="text-muted">Esta página demuestra la Alta Disponibilidad y el Balanceo de Carga del proyecto.</p>
+    </div>
+
+    <div class="row justify-content-center g-4">
+        <!-- Tarjeta del Servidor de Aplicación. -->
+        <div class="col-md-5">
+            <div class="card border-0 shadow-lg text-center h-100">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-window-stack"></i> Servidor de Aplicación</h5>
+                </div>
+                <div class="card-body py-5">
+                    <div class="display-1 text-primary mb-3">
+                        <i class="bi bi-server"></i>
+                    </div>
+                    <!-- Variable que imprime 'app-01' o 'app-02'. -->
+                    <h1 class="fw-bold mb-0">{{ app_actual }}</h1>
+                    <p class="text-muted mt-2">Atendiendo esta solicitud</p>
+                </div>
+                <div class="card-footer bg-white py-3">
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> HAProxy RoundRobin Activo</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta del Servidor de Base de Datos. -->
+        <div class="col-md-5">
+            <div class="card border-0 shadow-lg text-center h-100">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-database"></i> Servidor de Base de Datos</h5>
+                </div>
+                <div class="card-body py-5">
+                    <div class="display-1 text-success mb-3">
+                        <i class="bi bi-hdd-network"></i>
+                    </div>
+                    <!-- Variable que imprime 'db-01' o 'db-02' consultando vía SQL. -->
+                    <h1 class="fw-bold mb-0">{{ db_actual }}</h1>
+                    <p class="text-muted mt-2">Base de datos respondiendo</p>
+                </div>
+                <div class="card-footer bg-white py-3">
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> HAProxy MySQL Activo</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <!-- Botón que recarga la misma URL para forzar un nuevo balanceo o failover. -->
+        <a href="{{ url_for('estado_sistema') }}" class="btn btn-primary btn-lg px-5 shadow">
+            <i class="bi bi-arrow-clockwise"></i> Recargar para ver Balanceo
+        </a>
+        <p class="text-muted mt-3 small">Si recargas varias veces, verás que el servidor de aplicación cambia. Si apagas db-01, este panel cambiará a db-02 automáticamente.</p>
     </div>
 </main>
 </body>
@@ -155,12 +265,15 @@ PLANTILLA: templates/index.html (Formulario de Registro)
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
     <title>VetSystem - Registrar</title>
+    <!-- Bootstrap CSS. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<!-- Navbar -->
+<!-- Barra de navegación. -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
@@ -170,8 +283,8 @@ PLANTILLA: templates/index.html (Formulario de Registro)
             <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
-        <!-- Botón de Salir -->
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
@@ -180,7 +293,7 @@ PLANTILLA: templates/index.html (Formulario de Registro)
 </nav>
 
 <main class="container my-4">
-    <!-- Mensajes de alerta (éxito o error) -->
+    <!-- Muestra los mensajes flash de éxito o error enviados por Flask. -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -192,55 +305,67 @@ PLANTILLA: templates/index.html (Formulario de Registro)
     {% endwith %}
 
     <h2 class="mb-3"><i class="bi bi-clipboard-plus text-primary"></i> Registrar nuevo paciente</h2>
-    
+
+    <!-- Formulario que envía los datos a la ruta /registrar por método POST. -->
     <form class="card p-4 shadow-sm border-0" method="POST" action="/registrar">
-        <!-- Datos del Dueño -->
+        <!-- Título de sección de datos del dueño. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- Campo de nombre del dueño (obligatorio). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="owner_name" required></div>
+            <!-- Campo de teléfono del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" class="form-control" name="owner_phone"></div>
+            <!-- Campo de email del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
                 <input type="email" class="form-control" name="owner_email"></div>
+            <!-- Campo de dirección del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
                 <input type="text" class="form-control" name="owner_address"></div>
         </div>
 
-        <!-- Datos de la Mascota -->
+        <!-- Título de sección de datos de la mascota. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- Campo de nombre de la mascota (obligatorio). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="pet_name" required></div>
+            <!-- Campo de especie como texto libre (permite cualquier animal). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <!-- Especie cambiada a texto libre para permitir cualquier animal -->
                 <input type="text" class="form-control" name="pet_species" placeholder="Ej: Perro, Gato, Loro, Iguana..."></div>
+            <!-- Campo de raza. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
                 <input type="text" class="form-control" name="pet_breed"></div>
+            <!-- Campo de edad. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
                 <input type="number" class="form-control" name="pet_age"></div>
+            <!-- Campo de peso. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
                 <input type="number" step="0.01" class="form-control" name="pet_weight"></div>
         </div>
 
-        <!-- Sección Fecha y Motivo de la Cita -->
+        <!-- Título de sección de cita. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Fecha y Motivo de la Cita</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- Campo para seleccionar fecha y hora con el calendario del navegador. -->
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Fecha y Hora *</label>
-                <!-- type="datetime-local" abre un calendario con selector de hora -->
                 <input type="datetime-local" class="form-control" name="appointment_date" required>
             </div>
+            <!-- Campo del motivo de la cita. -->
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Motivo *</label>
                 <input type="text" class="form-control" name="reason" required>
             </div>
         </div>
+        <!-- Campo de diagnóstico opcional. -->
         <div class="mb-3">
             <label class="form-label fw-semibold">Diagnóstico (opcional)</label>
             <textarea class="form-control" name="diagnosis" rows="2"></textarea>
         </div>
 
+        <!-- Botón de envío del formulario. -->
         <div class="d-flex gap-2 border-top pt-3">
             <button class="btn btn-primary px-4" type="submit"><i class="bi bi-save"></i> Guardar Paciente</button>
         </div>
@@ -257,11 +382,15 @@ PLANTILLA: templates/editar_paciente.html (Edición Completa)
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
     <title>Editar Paciente - VetSystem</title>
+    <!-- Bootstrap CSS. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<!-- Barra de navegación. -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
@@ -271,6 +400,7 @@ PLANTILLA: templates/editar_paciente.html (Edición Completa)
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
@@ -281,55 +411,69 @@ PLANTILLA: templates/editar_paciente.html (Edición Completa)
 
 <main class="container my-4">
     <h2 class="mb-3"><i class="bi bi-pencil-square text-warning"></i> Editar Paciente #{{ pet.id }}</h2>
-    
+
+    <!-- Formulario que envía los datos por POST a la misma URL actual. -->
     <form class="card p-4 shadow-sm border-0" method="POST">
+        <!-- Título de sección de datos del dueño. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- Campo de nombre del dueño precargado con el valor actual. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="owner_name" value="{{ owner.name }}" required></div>
+            <!-- Campo de teléfono precargado. Usa 'or ''' para evitar mostrar None. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" class="form-control" name="owner_phone" value="{{ owner.phone or '' }}"></div>
+            <!-- Campo de email precargado. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
                 <input type="email" class="form-control" name="owner_email" value="{{ owner.email or '' }}"></div>
+            <!-- Campo de dirección precargado. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
                 <input type="text" class="form-control" name="owner_address" value="{{ owner.address or '' }}"></div>
         </div>
 
+        <!-- Título de sección de datos de la mascota. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
         <div class="row g-3 mb-4 mt-1">
+            <!-- Campo de nombre de la mascota precargado. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="pet_name" value="{{ pet.name }}" required></div>
+            <!-- Campo de especie precargado (texto libre). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <!-- Especie libre -->
                 <input type="text" class="form-control" name="pet_species" value="{{ pet.species or '' }}" placeholder="Ej: Perro, Loro, Iguana..."></div>
+            <!-- Campo de raza precargado. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
                 <input type="text" class="form-control" name="pet_breed" value="{{ pet.breed or '' }}"></div>
+            <!-- Campo de edad precargado. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
                 <input type="number" class="form-control" name="pet_age" value="{{ pet.age or '' }}"></div>
+            <!-- Campo de peso precargado. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
                 <input type="number" step="0.01" class="form-control" name="pet_weight" value="{{ pet.weight or '' }}"></div>
         </div>
 
-        <!-- Campos para editar la cita -->
+        <!-- Bloque condicional: solo muestra la sección de cita si existe una consulta asociada. -->
         {% if consulta %}
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Cita y Notas Médicas</h5>
         <div class="row g-3 mb-4 mt-1">
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Editar Fecha y Hora *</label>
-                <!-- strftime('%Y-%m-%dT%H:%M') es el formato que entiende el calendario del navegador -->
+                <!-- Formatea la fecha al estándar que espera el input datetime-local. -->
                 <input type="datetime-local" class="form-control" name="appointment_date" value="{{ consulta.appointment_date.strftime('%Y-%m-%dT%H:%M') if consulta.appointment_date else '' }}">
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Motivo de la Consulta</label>
+                <!-- Precarga el motivo actual. -->
                 <input type="text" class="form-control" name="reason" value="{{ consulta.reason or '' }}">
             </div>
             <div class="col-12">
                 <label class="form-label fw-semibold">Diagnóstico / Notas</label>
+                <!-- Precarga el diagnóstico actual. -->
                 <textarea class="form-control" name="diagnosis" rows="3">{{ consulta.diagnosis or '' }}</textarea>
             </div>
         </div>
         {% endif %}
 
+        <!-- Botones de acción. -->
         <div class="d-flex gap-2 border-top pt-3">
             <button class="btn btn-warning px-4" type="submit"><i class="bi bi-save"></i> Guardar Cambios</button>
             <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary">Cancelar</a>
@@ -347,11 +491,15 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
     <title>Ficha del Paciente - VetSystem</title>
+    <!-- Bootstrap CSS. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<!-- Barra de navegación. -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
@@ -361,6 +509,7 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
@@ -370,7 +519,7 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
 </nav>
 
 <main class="container my-4">
-    <!-- Muestra mensajes de alerta (si los hay) -->
+    <!-- Mensajes flash. -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -381,19 +530,21 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
       {% endif %}
     {% endwith %}
 
+    <!-- Encabezado de la ficha. -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-file-medical text-info"></i> Ficha Clínica: {{ pet.name }}</h2>
         <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a la lista</a>
     </div>
 
     <div class="row g-4">
-        <!-- Tarjeta del Dueño -->
+        <!-- Tarjeta con datos del dueño. -->
         <div class="col-md-5">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-dark text-white"><i class="bi bi-person-badge"></i> Datos del Dueño</div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item"><strong>Nombre:</strong> {{ owner.name }}</li>
+                        <!-- Usa 'or' para mostrar texto por defecto si el campo es nulo. -->
                         <li class="list-group-item"><strong>Teléfono:</strong> {{ owner.phone or 'No registrado' }}</li>
                         <li class="list-group-item"><strong>Email:</strong> {{ owner.email or 'No registrado' }}</li>
                         <li class="list-group-item"><strong>Dirección:</strong> {{ owner.address or 'No registrada' }}</li>
@@ -402,7 +553,7 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
             </div>
         </div>
 
-        <!-- Tarjeta de la Mascota -->
+        <!-- Tarjeta con datos de la mascota. -->
         <div class="col-md-7">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-primary text-white"><i class="bi bi-github"></i> Datos de la Mascota</div>
@@ -410,7 +561,9 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
                     <div class="row text-center">
                         <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Especie</h6><h5>{{ pet.species or 'N/A' }}</h5></div>
                         <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Raza</h6><h5>{{ pet.breed or 'N/A' }}</h5></div>
+                        <!-- El operador ~ concatena la edad con el texto 'años' si existe. -->
                         <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Edad</h6><h5>{{ pet.age ~ ' años' if pet.age else 'N/A' }}</h5></div>
+                        <!-- Concatena el peso con 'kg' si existe. -->
                         <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Peso</h6><h5>{{ pet.weight ~ ' kg' if pet.weight else 'N/A' }}</h5></div>
                     </div>
                 </div>
@@ -418,7 +571,7 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
         </div>
     </div>
 
-    <!-- Historial de Consultas -->
+    <!-- Tabla de historial de consultas. -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-success text-white"><i class="bi bi-clock-history"></i> Historial de Consultas</div>
         <div class="card-body p-0">
@@ -427,9 +580,10 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
                     <tr><th>Fecha</th><th>Motivo de Consulta</th><th>Diagnóstico</th></tr>
                 </thead>
                 <tbody>
+                    <!-- Bucle que recorre las consultas. -->
                     {% for c in consultas %}
                     <tr>
-                        <!-- Revisa si la fecha existe antes de formatearla -->
+                        <!-- Comprueba si la fecha existe antes de formatearla. -->
                         <td>
                             {% if c.appointment_date %}
                                 {{ c.appointment_date.strftime('%d/%m/%Y %H:%M') }}
@@ -448,11 +602,11 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
         </div>
     </div>
 
-    <!-- Bitácora de Notas -->
+    <!-- Sección de la Bitácora. -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Notas del Personal</div>
         <div class="card-body">
-            <!-- Solo muestra el formulario si el usuario tiene permiso -->
+            <!-- Muestra el formulario SOLO si can_add_note es verdadero. -->
             {% if can_add_note %}
             <form method="POST" action="{{ url_for('agregar_bitacora', id=pet.id) }}" class="mb-3">
                 <label class="form-label fw-semibold">Nueva nota</label>
@@ -462,7 +616,7 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
             <hr>
             {% endif %}
 
-            <!-- Lista de notas guardadas -->
+            <!-- Lista de notas guardadas. -->
             {% if bitacora %}
             <div class="list-group">
                 {% for b in bitacora %}
