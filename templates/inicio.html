@@ -17,6 +17,11 @@
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
         </div>
+        <!-- Botón de Salir agregado aquí -->
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
     </div>
 </nav>
 
@@ -87,6 +92,31 @@
                     </tr>
                     {% else %}
                     <tr><td colspan="4" class="text-center text-muted py-4">No hay citas programadas para hoy.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- NUEVO: Tabla de Próximas Citas con Fecha y Hora -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white fw-bold"><i class="bi bi-calendar-plus"></i> Próximas Citas (Futuras)</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Fecha y Hora</th><th>Mascota</th><th>Dueño</th><th>Motivo</th></tr>
+                </thead>
+                <tbody>
+                    {% for cita, pet, owner in citas_futuras %}
+                    <tr>
+                        <!-- Formato DD/MM/AAAA HH:MM -->
+                        <td><strong>{{ cita.appointment_date.strftime('%d/%m/%Y %H:%M') }}</strong></td>
+                        <td>{{ pet.name }}</td>
+                        <td>{{ owner.name }}</td>
+                        <td>{{ cita.reason }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">No hay citas futuras programadas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
