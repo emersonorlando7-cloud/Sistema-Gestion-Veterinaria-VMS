@@ -98,14 +98,13 @@
         </div>
     </div>
 
-    <!-- Bitácora del personal -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Notas del Personal</div>
         <div class="card-body">
             {% if can_add_note %}
             <form method="POST" action="{{ url_for('agregar_bitacora', id=pet.id) }}" class="mb-3">
                 <label class="form-label fw-semibold">Nueva nota</label>
-                <textarea class="form-control mb-2" name="note" rows="2" placeholder="Ej: Se aplicó vacuna antirrábica. Paciente muy inquieto." required></textarea>
+                <textarea class="form-control mb-2" name="note" rows="2" placeholder="Ej: Se aplicó vacuna antirrábica." required></textarea>
                 <button type="submit" class="btn btn-warning"><i class="bi bi-plus-circle"></i> Agregar Nota</button>
             </form>
             <hr>
