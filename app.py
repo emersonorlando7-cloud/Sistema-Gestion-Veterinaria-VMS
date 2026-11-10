@@ -5,6 +5,7 @@ from functools import wraps
 import socket
 import time
 from datetime import datetime, date, time as dt_time, timedelta
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_vetsystem_segura'
@@ -171,7 +172,6 @@ def inicio():
             Consultation.appointment_date < fin_dia
         ).order_by(Consultation.appointment_date).all()
 
-        # NUEVO: Consultar citas futuras (desde mañana en adelante)
         citas_futuras = db.session.query(Consultation, Pet, Owner).join(
             Pet, Consultation.pet_id == Pet.id
         ).join(
@@ -195,6 +195,20 @@ def inicio():
                            consultas_hoy=consultas_hoy,
                            citas_hoy=citas_hoy,
                            citas_futuras=citas_futuras)
+
+@app.route('/estado-sistema')
+@login_required
+def estado_sistema():
+    app_actual = socket.gethostname()
+    db_actual = "Desconocida"
+    
+    try:
+        resultado = db.session.execute(text("SELECT @@hostname")).scalar()
+        db_actual = resultado
+    except Exception as e:
+        db_actual = f"Error de conexión: {str(e)}"
+        
+    return render_template('estado.html', app_actual=app_actual, db_actual=db_actual)
 
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
