@@ -33,7 +33,7 @@
     {% endwith %}
 
     <h2 class="mb-3"><i class="bi bi-clipboard-plus text-primary"></i> Registrar nuevo paciente</h2>
-    
+
     <form class="card p-4 shadow-sm border-0" method="POST" action="/registrar">
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
@@ -52,12 +52,7 @@
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="pet_name" required></div>
             <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <select class="form-select" name="pet_species">
-                    <option value="Perro">Perro</option>
-                    <option value="Gato">Gato</option>
-                    <option value="Ave">Ave</option>
-                    <option value="Otro">Otro</option>
-                </select></div>
+                <input type="text" class="form-control" name="pet_species" placeholder="Ej: Perro, Gato, Loro, Iguana, Conejo..."></div>
             <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
                 <input type="text" class="form-control" name="pet_breed"></div>
             <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
