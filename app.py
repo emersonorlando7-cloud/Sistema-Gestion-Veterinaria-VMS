@@ -4,10 +4,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import socket
 import time
-from datetime import datetime, date
+from datetime import datetime, date, time as dt_time, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_vetsystem_segura'
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -21,6 +24,7 @@ db = SQLAlchemy(app)
 def shutdown_session(exception=None):
     db.session.remove()
 
+# ---------- MODELOS ----------
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
@@ -60,6 +64,15 @@ class Consultation(db.Model):
     diagnosis = db.Column(db.Text)
     appointment_date = db.Column(db.DateTime, nullable=False)
 
+class Bitacora(db.Model):
+    __tablename__ = 'bitacora'
+    id = db.Column(db.Integer, primary_key=True)
+    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id'), nullable=False)
+    author = db.Column(db.String(50), nullable=False)
+    note = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+# ---------- CREACIÓN AUTOMÁTICA ----------
 with app.app_context():
     try:
         db.create_all()
@@ -70,6 +83,7 @@ with app.app_context():
     except Exception as e:
         print(f"Error al crear usuario inicial: {e}")
 
+# ---------- DECORADORES ----------
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -100,6 +114,20 @@ def permission_required(permission):
         return decorated_function
     return decorator
 
+def _puede_agregar_nota():
+    """Verifica si el rol actual puede agregar notas a la bitácora."""
+    user_role = session.get('role')
+    if user_role in ['admin', 'sistemas', 'veterinario', 'recepcionista']:
+        return True
+    if user_role:
+        role_db = Role.query.filter_by(name=user_role).first()
+        if role_db:
+            perms = role_db.permissions.split(',')
+            if 'editar_pacientes' in perms or 'crear_pacientes' in perms or 'all' in perms:
+                return True
+    return False
+
+# ---------- LOGIN / LOGOUT ----------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -123,6 +151,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# ---------- INICIO ----------
 @app.route('/')
 @login_required
 def index():
@@ -135,18 +164,41 @@ def inicio():
         total_pacientes = Pet.query.count()
         total_duenos = Owner.query.count()
         total_consultas = Consultation.query.count()
-        
+
+        # FIX: comparación por rango en lugar de db.func.date()
         hoy = datetime.now().date()
-        consultas_hoy = Consultation.query.filter(db.func.date(Consultation.appointment_date) == hoy).count()
-        citas_hoy = db.session.query(Consultation, Pet, Owner).join(Pet, Consultation.pet_id == Pet.id).join(Owner, Pet.owner_id == Owner.id).filter(db.func.date(Consultation.appointment_date) == hoy).order_by(Consultation.appointment_date).all()
+        inicio_dia = datetime.combine(hoy, dt_time.min)      # hoy a las 00:00:00
+        fin_dia = inicio_dia + timedelta(days=1)             # mañana a las 00:00:00
+
+        consultas_hoy = Consultation.query.filter(
+            Consultation.appointment_date >= inicio_dia,
+            Consultation.appointment_date < fin_dia
+        ).count()
+
+        citas_hoy = db.session.query(Consultation, Pet, Owner).join(
+            Pet, Consultation.pet_id == Pet.id
+        ).join(
+            Owner, Pet.owner_id == Owner.id
+        ).filter(
+            Consultation.appointment_date >= inicio_dia,
+            Consultation.appointment_date < fin_dia
+        ).order_by(Consultation.appointment_date).all()
+
     except Exception:
         total_pacientes = 0
         total_duenos = 0
         total_consultas = 0
         consultas_hoy = 0
         citas_hoy = []
-    return render_template('inicio.html', hostname=socket.gethostname(), total_pacientes=total_pacientes, total_duenos=total_duenos, total_consultas=total_consultas, consultas_hoy=consultas_hoy, citas_hoy=citas_hoy)
 
+    return render_template('inicio.html', hostname=socket.gethostname(),
+                           total_pacientes=total_pacientes,
+                           total_duenos=total_duenos,
+                           total_consultas=total_consultas,
+                           consultas_hoy=consultas_hoy,
+                           citas_hoy=citas_hoy)
+
+# ---------- REGISTRAR PACIENTE ----------
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
 @permission_required('crear_pacientes')
@@ -158,13 +210,17 @@ def registrar_paciente():
                 owner = Owner(name=request.form['owner_name'], phone=request.form.get('owner_phone'), email=request.form.get('owner_email'), address=request.form.get('owner_address'))
                 db.session.add(owner)
                 db.session.flush()
-                
+
                 age = request.form.get('pet_age')
                 weight = request.form.get('pet_weight')
-                pet = Pet(owner_id=owner.id, name=request.form['pet_name'], species=request.form.get('pet_species'), breed=request.form.get('pet_breed'), age=int(age) if age else None, weight=float(weight) if weight else None)
+                pet = Pet(owner_id=owner.id, name=request.form['pet_name'],
+                          species=request.form.get('pet_species'),
+                          breed=request.form.get('pet_breed'),
+                          age=int(age) if age else None,
+                          weight=float(weight) if weight else None)
                 db.session.add(pet)
                 db.session.flush()
-                
+
                 appointment_str = request.form.get('appointment_date')
                 if appointment_str:
                     appointment_dt = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
@@ -177,10 +233,12 @@ def registrar_paciente():
                     db.session.rollback()
                     return redirect(url_for('registrar_paciente'))
 
-                consultation = Consultation(pet_id=pet.id, reason=request.form.get('reason'), diagnosis=request.form.get('diagnosis'), appointment_date=appointment_dt)
+                consultation = Consultation(pet_id=pet.id,
+                                            reason=request.form.get('reason'),
+                                            diagnosis=request.form.get('diagnosis'),
+                                            appointment_date=appointment_dt)
                 db.session.add(consultation)
                 db.session.commit()
-                
                 flash('Paciente y cita registrados exitosamente!', 'success')
                 return redirect(url_for('pacientes'))
             except Exception as e:
@@ -191,6 +249,7 @@ def registrar_paciente():
                     flash(f'Error al registrar: {str(e)}', 'danger')
     return render_template('index.html', hostname=socket.gethostname())
 
+# ---------- LISTADO ----------
 @app.route('/pacientes')
 @login_required
 def pacientes():
@@ -207,12 +266,18 @@ def ver_paciente(id):
         pet = Pet.query.get_or_404(id)
         owner = Owner.query.get(pet.owner_id)
         consultas = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).all()
+        bitacora = Bitacora.query.filter_by(pet_id=pet.id).order_by(Bitacora.created_at.desc()).all()
     except Exception:
         db.session.rollback()
         flash('Error de conexión. Recargue la página e intente de nuevo.', 'danger')
         return redirect(url_for('pacientes'))
-    return render_template('ver_paciente.html', pet=pet, owner=owner, consultas=consultas, hostname=socket.gethostname())
 
+    return render_template('ver_paciente.html', pet=pet, owner=owner,
+                           consultas=consultas, bitacora=bitacora,
+                           can_add_note=_puede_agregar_nota(),
+                           hostname=socket.gethostname())
+
+# ---------- EDITAR PACIENTE (todo editable) ----------
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 @permission_required('editar_pacientes')
@@ -229,20 +294,20 @@ def editar_paciente(id):
         intentos = 3
         for intento in range(intentos):
             try:
+                # Dueño
                 owner.name = request.form['owner_name']
                 owner.phone = request.form.get('owner_phone')
                 owner.email = request.form.get('owner_email')
                 owner.address = request.form.get('owner_address')
-                
+                # Mascota
                 pet.name = request.form['pet_name']
                 pet.species = request.form.get('pet_species')
                 pet.breed = request.form.get('pet_breed')
-                
                 age = request.form.get('pet_age')
                 weight = request.form.get('pet_weight')
                 pet.age = int(age) if age else None
                 pet.weight = float(weight) if weight else None
-                
+                # Cita
                 if consulta:
                     appointment_str = request.form.get('appointment_date')
                     if appointment_str:
@@ -259,8 +324,10 @@ def editar_paciente(id):
                     time.sleep(1)
                 else:
                     flash(f'Error al actualizar paciente: {str(e)}', 'danger')
-    return render_template('editar_paciente.html', pet=pet, owner=owner, consulta=consulta, hostname=socket.gethostname())
+    return render_template('editar_paciente.html', pet=pet, owner=owner,
+                           consulta=consulta, hostname=socket.gethostname())
 
+# ---------- ELIMINAR PACIENTE ----------
 @app.route('/paciente/eliminar/<int:id>')
 @login_required
 @permission_required('eliminar_pacientes')
@@ -270,16 +337,18 @@ def eliminar_paciente(id):
         try:
             pet = Pet.query.get_or_404(id)
             owner_id = pet.owner_id
+            # Borrar hijas primero
             Consultation.query.filter_by(pet_id=pet.id).delete()
+            Bitacora.query.filter_by(pet_id=pet.id).delete()
             db.session.delete(pet)
             db.session.flush()
-            
+
             otras_mascotas = Pet.query.filter_by(owner_id=owner_id).count()
             if otras_mascotas == 0:
                 owner = Owner.query.get(owner_id)
                 if owner:
                     db.session.delete(owner)
-                    
+
             db.session.commit()
             flash('Paciente eliminado.', 'success')
             return redirect(url_for('pacientes'))
@@ -291,6 +360,36 @@ def eliminar_paciente(id):
                 flash(f'Error al eliminar: {str(e)}', 'danger')
     return redirect(url_for('pacientes'))
 
+# ---------- BITÁCORA (nueva sección) ----------
+@app.route('/paciente/<int:id>/bitacora', methods=['POST'])
+@login_required
+def agregar_bitacora(id):
+    if not _puede_agregar_nota():
+        flash('No tienes permisos para agregar notas a la bitácora.', 'warning')
+        return redirect(url_for('ver_paciente', id=id))
+
+    try:
+        pet = Pet.query.get_or_404(id)
+        note_text = (request.form.get('note') or '').strip()
+        if not note_text:
+            flash('La nota no puede estar vacía.', 'warning')
+            return redirect(url_for('ver_paciente', id=id))
+
+        nueva_nota = Bitacora(
+            pet_id=pet.id,
+            author=session.get('username', 'desconocido'),
+            note=note_text
+        )
+        db.session.add(nueva_nota)
+        db.session.commit()
+        flash('Nota agregada a la bitácora correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar la nota: {str(e)}', 'danger')
+
+    return redirect(url_for('ver_paciente', id=id))
+
+# ---------- USUARIOS ----------
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
 @permission_required('gestionar_usuarios')
@@ -380,6 +479,7 @@ def eliminar_usuario(id):
                 flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
     return redirect(url_for('usuarios'))
 
+# ---------- ROLES ----------
 @app.route('/roles', methods=['GET', 'POST'])
 @login_required
 @permission_required('gestionar_usuarios')
