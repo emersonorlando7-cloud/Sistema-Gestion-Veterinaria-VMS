@@ -11,18 +11,12 @@ app.secret_key = 'clave_secreta_vetsystem_segura'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# --- CONFIGURACIÓN DEL POOL DE CONEXIONES (SOLUCIÓN A LA LENTITUD) ---
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_size': 10,
-    'max_overflow': 20,
-    'pool_recycle': 280,
-    'pool_pre_ping': True
+    'pool_size': 10, 'max_overflow': 20, 'pool_recycle': 280, 'pool_pre_ping': True
 }
 
 db = SQLAlchemy(app)
 
-# --- LIMPIEZA AUTOMÁTICA DE SESIÓN (EVITA CONEXIONES ZOMBIS) ---
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db.session.remove()
@@ -141,7 +135,8 @@ def inicio():
         total_pacientes = Pet.query.count()
         total_duenos = Owner.query.count()
         total_consultas = Consultation.query.count()
-        hoy = date.today()
+        
+        hoy = datetime.now().date()
         consultas_hoy = Consultation.query.filter(db.func.date(Consultation.appointment_date) == hoy).count()
         citas_hoy = db.session.query(Consultation, Pet, Owner).join(Pet, Consultation.pet_id == Pet.id).join(Owner, Pet.owner_id == Owner.id).filter(db.func.date(Consultation.appointment_date) == hoy).order_by(Consultation.appointment_date).all()
     except Exception:
@@ -216,7 +211,6 @@ def ver_paciente(id):
         db.session.rollback()
         flash('Error de conexión. Recargue la página e intente de nuevo.', 'danger')
         return redirect(url_for('pacientes'))
-        
     return render_template('ver_paciente.html', pet=pet, owner=owner, consultas=consultas, hostname=socket.gethostname())
 
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
@@ -226,6 +220,7 @@ def editar_paciente(id):
     try:
         pet = Pet.query.get_or_404(id)
         owner = Owner.query.get(pet.owner_id)
+        consulta = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).first()
     except Exception:
         flash('Error de conexión con la base de datos. Recargue la página.', 'danger')
         return redirect(url_for('pacientes'))
@@ -238,15 +233,25 @@ def editar_paciente(id):
                 owner.phone = request.form.get('owner_phone')
                 owner.email = request.form.get('owner_email')
                 owner.address = request.form.get('owner_address')
+                
                 pet.name = request.form['pet_name']
                 pet.species = request.form.get('pet_species')
                 pet.breed = request.form.get('pet_breed')
+                
                 age = request.form.get('pet_age')
                 weight = request.form.get('pet_weight')
                 pet.age = int(age) if age else None
                 pet.weight = float(weight) if weight else None
+                
+                if consulta:
+                    appointment_str = request.form.get('appointment_date')
+                    if appointment_str:
+                        consulta.appointment_date = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                    consulta.reason = request.form.get('reason')
+                    consulta.diagnosis = request.form.get('diagnosis')
+
                 db.session.commit()
-                flash('Paciente actualizado correctamente!', 'success')
+                flash('Paciente, cita y notas actualizados correctamente!', 'success')
                 return redirect(url_for('pacientes'))
             except Exception as e:
                 db.session.rollback()
@@ -254,7 +259,7 @@ def editar_paciente(id):
                     time.sleep(1)
                 else:
                     flash(f'Error al actualizar paciente: {str(e)}', 'danger')
-    return render_template('editar_paciente.html', pet=pet, owner=owner, hostname=socket.gethostname())
+    return render_template('editar_paciente.html', pet=pet, owner=owner, consulta=consulta, hostname=socket.gethostname())
 
 @app.route('/paciente/eliminar/<int:id>')
 @login_required
@@ -264,12 +269,17 @@ def eliminar_paciente(id):
     for intento in range(intentos):
         try:
             pet = Pet.query.get_or_404(id)
-            owner = Owner.query.get(pet.owner_id)
+            owner_id = pet.owner_id
             Consultation.query.filter_by(pet_id=pet.id).delete()
-            db.session.flush()
             db.session.delete(pet)
             db.session.flush()
-            db.session.delete(owner)
+            
+            otras_mascotas = Pet.query.filter_by(owner_id=owner_id).count()
+            if otras_mascotas == 0:
+                owner = Owner.query.get(owner_id)
+                if owner:
+                    db.session.delete(owner)
+                    
             db.session.commit()
             flash('Paciente eliminado.', 'success')
             return redirect(url_for('pacientes'))
