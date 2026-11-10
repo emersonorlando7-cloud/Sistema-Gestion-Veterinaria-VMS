@@ -15,6 +15,7 @@
             <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
         </div>
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
@@ -29,37 +30,50 @@
     <form class="card p-4 shadow-sm border-0" method="POST">
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
-            <div class="col-md-6"><label class="form-label">Nombre *</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="owner_name" value="{{ owner.name }}" required></div>
-            <div class="col-md-6"><label class="form-label">Teléfono</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" class="form-control" name="owner_phone" value="{{ owner.phone or '' }}"></div>
-            <div class="col-md-6"><label class="form-label">Email</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
                 <input type="email" class="form-control" name="owner_email" value="{{ owner.email or '' }}"></div>
-            <div class="col-md-6"><label class="form-label">Dirección</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
                 <input type="text" class="form-control" name="owner_address" value="{{ owner.address or '' }}"></div>
         </div>
 
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
         <div class="row g-3 mb-4 mt-1">
-            <div class="col-md-6"><label class="form-label">Nombre *</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="pet_name" value="{{ pet.name }}" required></div>
-            <div class="col-md-6"><label class="form-label">Especie</label>
-                <select class="form-select" name="pet_species">
-                    <option value="Perro" {% if pet.species == 'Perro' %}selected{% endif %}>Perro</option>
-                    <option value="Gato" {% if pet.species == 'Gato' %}selected{% endif %}>Gato</option>
-                    <option value="Ave" {% if pet.species == 'Ave' %}selected{% endif %}>Ave</option>
-                    <option value="Otro" {% if pet.species == 'Otro' %}selected{% endif %}>Otro</option>
-                </select></div>
-            <div class="col-md-4"><label class="form-label">Raza</label>
+            <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
+                <input type="text" class="form-control" name="pet_species" value="{{ pet.species or '' }}" placeholder="Ej: Perro, Loro, Iguana..."></div>
+            <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
                 <input type="text" class="form-control" name="pet_breed" value="{{ pet.breed or '' }}"></div>
-            <div class="col-md-4"><label class="form-label">Edad</label>
+            <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
                 <input type="number" class="form-control" name="pet_age" value="{{ pet.age or '' }}"></div>
-            <div class="col-md-4"><label class="form-label">Peso</label>
+            <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
                 <input type="number" step="0.01" class="form-control" name="pet_weight" value="{{ pet.weight or '' }}"></div>
         </div>
 
+        {% if consulta %}
+        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Cita y Notas Médicas</h5>
+        <div class="row g-3 mb-4 mt-1">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Fecha y Hora *</label>
+                <input type="datetime-local" class="form-control" name="appointment_date" value="{{ consulta.appointment_date.strftime('%Y-%m-%dT%H:%M') if consulta.appointment_date else '' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Motivo de la Consulta</label>
+                <input type="text" class="form-control" name="reason" value="{{ consulta.reason or '' }}">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Diagnóstico / Notas</label>
+                <textarea class="form-control" name="diagnosis" rows="3">{{ consulta.diagnosis or '' }}</textarea>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="d-flex gap-2 border-top pt-3">
-            <button class="btn btn-warning px-4" type="submit"><i class="bi bi-save"></i> Actualizar Datos</button>
+            <button class="btn btn-warning px-4" type="submit"><i class="bi bi-save"></i> Guardar Cambios</button>
             <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary">Cancelar</a>
         </div>
     </form>
