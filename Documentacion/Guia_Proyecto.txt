@@ -65,15 +65,11 @@ sudo nano /etc/hosts # Abre el archivo para mapear las IPs y nombres.
 
 sudo ping db-01 # Comprueba que la red y la resolución de nombres funcionan.
 
-POSIBLES FALLOS Y SOLUCIONES:
-- Error "Invalid YAML": Usar solo espacios (no Tab) en el archivo. Alinear los guiones "-" con 2 espacios más que "addresses:".
-- El ping no funciona: Revisar que el Adaptador 2 esté conectado y que los archivos /etc/hosts estén idénticos en todas las máquinas.
-
 
 ═══════════════════════════════════════════════════════════════════════
 2. SERVIDORES DE BASE DE DATOS (db-01 y db-02)
 ═══════════════════════════════════════════════════════════════════════
-Objetivo: Configurar la replicación y las tablas para citas y roles.
+Objetivo: Configurar la replicación y las tablas para citas y bitácora.
 
 Paso 2.1: Instalación
 # Explicación: Actualiza el sistema e instala el servidor de base de datos MySQL.
@@ -135,6 +131,16 @@ CREATE TABLE roles (
     permissions TEXT NOT NULL # Guarda los permisos separados por coma.
 );
 
+# Tabla NUEVA para la Bitácora.
+CREATE TABLE bitacora (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pet_id INT NOT NULL,
+    author VARCHAR(50) NOT NULL,
+    note TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (pet_id) REFERENCES pets(id) ON DELETE CASCADE
+);
+
 # Inserta los roles base del sistema.
 INSERT IGNORE INTO roles (name, permissions) VALUES 
 ('admin', 'all'),
@@ -154,12 +160,6 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.56.13', SOURCE_USER='replicato
 START REPLICA; # Inicia la replicación.
 # (Hacer lo mismo en db-01 apuntando los datos a la IP de db-02).
 
-POSIBLES FALLOS Y SOLUCIONES:
-- "Unknown variable 'log_bin'": MySQL 8.4 eliminó esta variable. Borrarla.
-- "Plugin 'mysql_native_password' is not loaded": Usar caching_sha2_password por defecto.
-- "Access denied for user 'app_user'@'lb-01'": Crear el usuario para la IP 192.168.56.10.
-- Error 2013 (Lost connection): Tener timeouts altos en HAProxy y la lógica de reintento en Python.
-
 
 ═══════════════════════════════════════════════════════════════════════
 3. SERVIDORES DE APLICACIÓN (app-01 y app-02)
@@ -167,7 +167,7 @@ POSIBLES FALLOS Y SOLUCIONES:
 Objetivo: Correr Flask con Gunicorn como servicio.
 
 Paso 3.1: Instalar dependencias
-sudo apt install python3-pip python3-venv python3.14-venv git -y # Instala Python, pip, entorno virtual y Git.
+sudo apt install python3-pip python3-venv python3-full git -y # Instala Python, pip, entorno virtual y Git.
 
 Paso 3.2: Descargar proyecto
 # Explicación: Descarga el código fuente de la aplicación desde GitHub.
@@ -200,12 +200,6 @@ WantedBy=multi-user.target # Se inicia al encender la máquina.
 sudo systemctl daemon-reload # Recarga los servicios del sistema.
 sudo systemctl start vetsystem # Inicia la aplicación.
 sudo systemctl enable vetsystem # Habilita el arranque automático.
-
-POSIBLES FALLOS Y SOLUCIONES:
-- "TemplateNotFound": Faltan archivos HTML. Revisar la carpeta 'templates'.
-- Error 500 al editar: Ocurre al dejar campos numéricos vacíos. Solución: Usar int(age) if age else None.
-- Error 1451 al eliminar: Ocurre por llaves foráneas. Solución: Borrar consultas antes de mascota y usar flush().
-- Página en blanco o 503: Revisar con sudo systemctl status vetsystem y reiniciar.
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -242,9 +236,10 @@ frontend web_frontend
 
 backend web_servers
     balance roundrobin # Alterna las peticiones entre app-01 y app-02.
+    cookie SERVERID insert indirect nocache # IMPORTANTE: Mantiene la sesión pegada al servidor para no cerrar sesión.
     option httpchk GET / # Verifica que la app responda (HTTP 200).
-    server app-01 192.168.56.11:5000 check # Servidor 1 (verifica estado).
-    server app-02 192.168.56.12:5000 check # Servidor 2 (verifica estado).
+    server app-01 192.168.56.11:5000 check cookie s1 # Servidor 1 (verifica estado y le asigna cookie s1).
+    server app-02 192.168.56.12:5000 check cookie s2 # Servidor 2 (verifica estado y le asigna cookie s2).
 
 frontend mysql_frontend
     bind *:3306 # Escucha en el puerto de MySQL.
@@ -268,12 +263,6 @@ listen stats
 
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg # Valida que el archivo no tenga errores.
 sudo systemctl restart haproxy # Reinicia HAProxy para aplicar los cambios.
-
-POSIBLES FALLOS Y SOLUCIONES:
-- "unknown keyword 'balace'": Error de tipeo. Corregir a 'balance'.
-- "stats parameter 'anable'": Error de tipeo. Corregir a 'enable'.
-- "backend 'mysql_servers' has the same name": Se duplicó el bloque. Borrar el duplicado.
-- Las apps o bases en rojo: Revisar que los servicios estén corriendo y los firewalls permitan el tráfico.
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -345,25 +334,21 @@ B. Error 500 en Flask (Pantalla blanca):
    - Causa: Error interno en el código (ej. campos vacíos).
    - Solución: Agregar try...except en app.py. Revisar journalctl -u vetsystem -n 50.
 
-C. Base de datos bloqueada por errores:
-   - Causa: MySQL bloquea IPs por múltiples intentos fallidos.
-   - Solución: En MySQL, ejecutar TRUNCATE TABLE performance_schema.host_cache; y reiniciar HAProxy.
+C. La sesión se cierra al crear o borrar datos:
+   - Causa: El navegador no reconoce la cookie porque HAProxy está saltando de app-01 a app-02.
+   - Solución: Tener las líneas "cookie SERVERID" en HAProxy (Paso 4.2) y borrar las cookies viejas del navegador (Ctrl+Shift+Delete).
 
-D. La página dice "Lost connection to MySQL" (2013):
-   - Causa: Se apagó una base abruptamente y la conexión en memoria murió.
-   - Solución: La app tiene bucle de reintento (time.sleep(1)) y PRE_PING.
+D. "Citas para hoy" no muestran nada:
+   - Causa: Desfase de horas entre la VM y tu hora local.
+   - Solución: Ejecutar `sudo timedatectl set-timezone America/Guatemala` en app-01 y app-02, y luego reiniciar vetsystem.
 
 E. Al editar campos se genera error 500:
    - Causa: Dejar vacíos los campos de Edad o Peso (columnas numéricas).
-   - Solución: Convertir a None si están vacíos: pet.age = int(age) if age else None.
+   - Solución: Convertir a None si están vacíos: pet.age = int(age) if age else None (ya implementado en app.py).
 
 F. No se puede eliminar un paciente (Error 1451):
-   - Causa: El paciente tiene consultas médicas asociadas (llave foránea).
-   - Solución: Borrar las consultas primero y usar db.session.flush().
-
-G. No aparece el aviso cuando un usuario sin permisos entra a una sección:
-   - Causa: Antes se usaba flash() y redirect(), lo que hacía que la página cambiara y el mensaje apareciera después.
-   - Solución: Se modificó el decorador @permission_required en app.py para que devuelva un script de JavaScript que lanza una alerta inmediata (alert()) y devuelve al usuario a la página anterior (history.back()).
+   - Causa: El paciente tiene consultas médicas o bitácora asociadas (llave foránea).
+   - Solución: El código actual ya borra las tablas hijas antes de eliminar a la mascota.
 
 ═══════════════════════════════════════════════════════════════════════
 FIN DE LA GUÍA DE PROCESO
