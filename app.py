@@ -171,19 +171,30 @@ def inicio():
             Consultation.appointment_date < fin_dia
         ).order_by(Consultation.appointment_date).all()
 
+        # NUEVO: Consultar citas futuras (desde mañana en adelante)
+        citas_futuras = db.session.query(Consultation, Pet, Owner).join(
+            Pet, Consultation.pet_id == Pet.id
+        ).join(
+            Owner, Pet.owner_id == Owner.id
+        ).filter(
+            Consultation.appointment_date >= fin_dia
+        ).order_by(Consultation.appointment_date).all()
+
     except Exception:
         total_pacientes = 0
         total_duenos = 0
         total_consultas = 0
         consultas_hoy = 0
         citas_hoy = []
+        citas_futuras = []
 
     return render_template('inicio.html', hostname=socket.gethostname(),
                            total_pacientes=total_pacientes,
                            total_duenos=total_duenos,
                            total_consultas=total_consultas,
                            consultas_hoy=consultas_hoy,
-                           citas_hoy=citas_hoy)
+                           citas_hoy=citas_hoy,
+                           citas_futuras=citas_futuras)
 
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
