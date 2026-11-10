@@ -8,7 +8,6 @@ from datetime import datetime, date, time as dt_time, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_vetsystem_segura'
-
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
@@ -24,7 +23,6 @@ db = SQLAlchemy(app)
 def shutdown_session(exception=None):
     db.session.remove()
 
-# ---------- MODELOS ----------
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
@@ -72,7 +70,6 @@ class Bitacora(db.Model):
     note = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-# ---------- CREACIÓN AUTOMÁTICA ----------
 with app.app_context():
     try:
         db.create_all()
@@ -83,7 +80,6 @@ with app.app_context():
     except Exception as e:
         print(f"Error al crear usuario inicial: {e}")
 
-# ---------- DECORADORES ----------
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -105,17 +101,11 @@ def permission_required(permission):
             role_db = Role.query.filter_by(name=user_role).first()
             if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
                 return f(*args, **kwargs)
-            return """
-            <script>
-                alert('⛔ No tienes permisos para acceder a esta sección.');
-                window.history.back();
-            </script>
-            """
+            return "<script>alert('⛔ No tienes permisos.'); window.history.back();</script>"
         return decorated_function
     return decorator
 
 def _puede_agregar_nota():
-    """Verifica si el rol actual puede agregar notas a la bitácora."""
     user_role = session.get('role')
     if user_role in ['admin', 'sistemas', 'veterinario', 'recepcionista']:
         return True
@@ -127,7 +117,6 @@ def _puede_agregar_nota():
                 return True
     return False
 
-# ---------- LOGIN / LOGOUT ----------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -151,7 +140,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# ---------- INICIO ----------
 @app.route('/')
 @login_required
 def index():
@@ -165,10 +153,9 @@ def inicio():
         total_duenos = Owner.query.count()
         total_consultas = Consultation.query.count()
 
-        # FIX: comparación por rango en lugar de db.func.date()
         hoy = datetime.now().date()
-        inicio_dia = datetime.combine(hoy, dt_time.min)      # hoy a las 00:00:00
-        fin_dia = inicio_dia + timedelta(days=1)             # mañana a las 00:00:00
+        inicio_dia = datetime.combine(hoy, dt_time.min)
+        fin_dia = inicio_dia + timedelta(days=1)
 
         consultas_hoy = Consultation.query.filter(
             Consultation.appointment_date >= inicio_dia,
@@ -198,7 +185,6 @@ def inicio():
                            consultas_hoy=consultas_hoy,
                            citas_hoy=citas_hoy)
 
-# ---------- REGISTRAR PACIENTE ----------
 @app.route('/registrar', methods=['GET', 'POST'])
 @login_required
 @permission_required('crear_pacientes')
@@ -229,14 +215,11 @@ def registrar_paciente():
 
                 cita_existente = Consultation.query.filter_by(appointment_date=appointment_dt).first()
                 if cita_existente:
-                    flash('Error: Este horario ya está ocupado. Por favor elige otro.', 'warning')
+                    flash('Error: Este horario ya está ocupado.', 'warning')
                     db.session.rollback()
                     return redirect(url_for('registrar_paciente'))
 
-                consultation = Consultation(pet_id=pet.id,
-                                            reason=request.form.get('reason'),
-                                            diagnosis=request.form.get('diagnosis'),
-                                            appointment_date=appointment_dt)
+                consultation = Consultation(pet_id=pet.id, reason=request.form.get('reason'), diagnosis=request.form.get('diagnosis'), appointment_date=appointment_dt)
                 db.session.add(consultation)
                 db.session.commit()
                 flash('Paciente y cita registrados exitosamente!', 'success')
@@ -249,7 +232,6 @@ def registrar_paciente():
                     flash(f'Error al registrar: {str(e)}', 'danger')
     return render_template('index.html', hostname=socket.gethostname())
 
-# ---------- LISTADO ----------
 @app.route('/pacientes')
 @login_required
 def pacientes():
@@ -269,15 +251,13 @@ def ver_paciente(id):
         bitacora = Bitacora.query.filter_by(pet_id=pet.id).order_by(Bitacora.created_at.desc()).all()
     except Exception:
         db.session.rollback()
-        flash('Error de conexión. Recargue la página e intente de nuevo.', 'danger')
+        flash('Error de conexión. Recargue la página.', 'danger')
         return redirect(url_for('pacientes'))
-
     return render_template('ver_paciente.html', pet=pet, owner=owner,
                            consultas=consultas, bitacora=bitacora,
                            can_add_note=_puede_agregar_nota(),
                            hostname=socket.gethostname())
 
-# ---------- EDITAR PACIENTE (todo editable) ----------
 @app.route('/paciente/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 @permission_required('editar_pacientes')
@@ -287,19 +267,17 @@ def editar_paciente(id):
         owner = Owner.query.get(pet.owner_id)
         consulta = Consultation.query.filter_by(pet_id=pet.id).order_by(Consultation.appointment_date.desc()).first()
     except Exception:
-        flash('Error de conexión con la base de datos. Recargue la página.', 'danger')
+        flash('Error de conexión.', 'danger')
         return redirect(url_for('pacientes'))
 
     if request.method == 'POST':
         intentos = 3
         for intento in range(intentos):
             try:
-                # Dueño
                 owner.name = request.form['owner_name']
                 owner.phone = request.form.get('owner_phone')
                 owner.email = request.form.get('owner_email')
                 owner.address = request.form.get('owner_address')
-                # Mascota
                 pet.name = request.form['pet_name']
                 pet.species = request.form.get('pet_species')
                 pet.breed = request.form.get('pet_breed')
@@ -307,27 +285,24 @@ def editar_paciente(id):
                 weight = request.form.get('pet_weight')
                 pet.age = int(age) if age else None
                 pet.weight = float(weight) if weight else None
-                # Cita
                 if consulta:
                     appointment_str = request.form.get('appointment_date')
                     if appointment_str:
                         consulta.appointment_date = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
                     consulta.reason = request.form.get('reason')
                     consulta.diagnosis = request.form.get('diagnosis')
-
                 db.session.commit()
-                flash('Paciente, cita y notas actualizados correctamente!', 'success')
+                flash('Actualizado correctamente!', 'success')
                 return redirect(url_for('pacientes'))
             except Exception as e:
                 db.session.rollback()
                 if intento < (intentos - 1):
                     time.sleep(1)
                 else:
-                    flash(f'Error al actualizar paciente: {str(e)}', 'danger')
+                    flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_paciente.html', pet=pet, owner=owner,
                            consulta=consulta, hostname=socket.gethostname())
 
-# ---------- ELIMINAR PACIENTE ----------
 @app.route('/paciente/eliminar/<int:id>')
 @login_required
 @permission_required('eliminar_pacientes')
@@ -337,18 +312,15 @@ def eliminar_paciente(id):
         try:
             pet = Pet.query.get_or_404(id)
             owner_id = pet.owner_id
-            # Borrar hijas primero
             Consultation.query.filter_by(pet_id=pet.id).delete()
             Bitacora.query.filter_by(pet_id=pet.id).delete()
             db.session.delete(pet)
             db.session.flush()
-
             otras_mascotas = Pet.query.filter_by(owner_id=owner_id).count()
             if otras_mascotas == 0:
                 owner = Owner.query.get(owner_id)
                 if owner:
                     db.session.delete(owner)
-
             db.session.commit()
             flash('Paciente eliminado.', 'success')
             return redirect(url_for('pacientes'))
@@ -360,59 +332,44 @@ def eliminar_paciente(id):
                 flash(f'Error al eliminar: {str(e)}', 'danger')
     return redirect(url_for('pacientes'))
 
-# ---------- BITÁCORA (nueva sección) ----------
 @app.route('/paciente/<int:id>/bitacora', methods=['POST'])
 @login_required
 def agregar_bitacora(id):
     if not _puede_agregar_nota():
-        flash('No tienes permisos para agregar notas a la bitácora.', 'warning')
+        flash('No tienes permisos.', 'warning')
         return redirect(url_for('ver_paciente', id=id))
-
     try:
         pet = Pet.query.get_or_404(id)
         note_text = (request.form.get('note') or '').strip()
         if not note_text:
             flash('La nota no puede estar vacía.', 'warning')
             return redirect(url_for('ver_paciente', id=id))
-
-        nueva_nota = Bitacora(
-            pet_id=pet.id,
-            author=session.get('username', 'desconocido'),
-            note=note_text
-        )
+        nueva_nota = Bitacora(pet_id=pet.id, author=session.get('username', 'desconocido'), note=note_text)
         db.session.add(nueva_nota)
         db.session.commit()
-        flash('Nota agregada a la bitácora correctamente.', 'success')
+        flash('Nota agregada.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al guardar la nota: {str(e)}', 'danger')
-
     return redirect(url_for('ver_paciente', id=id))
 
-# ---------- USUARIOS ----------
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
 @permission_required('gestionar_usuarios')
 def usuarios():
     if request.method == 'POST':
-        intentos = 3
-        for intento in range(intentos):
-            try:
-                username = request.form['username']
-                password = request.form['password']
-                role = request.form['role']
-                hashed_pw = generate_password_hash(password)
-                nuevo_user = User(username=username, password_hash=hashed_pw, role=role)
-                db.session.add(nuevo_user)
-                db.session.commit()
-                flash('Usuario creado exitosamente!', 'success')
-                break
-            except Exception:
-                db.session.rollback()
-                if intento < (intentos - 1):
-                    time.sleep(1)
-                else:
-                    flash('Error al crear el usuario.', 'danger')
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            role = request.form['role']
+            hashed_pw = generate_password_hash(password)
+            nuevo_user = User(username=username, password_hash=hashed_pw, role=role)
+            db.session.add(nuevo_user)
+            db.session.commit()
+            flash('Usuario creado exitosamente!', 'success')
+        except Exception:
+            db.session.rollback()
+            flash('Error al crear el usuario.', 'danger')
     try:
         lista_users = User.query.all()
         lista_roles = Role.query.all()
@@ -429,31 +386,26 @@ def editar_usuario(id):
         user = User.query.get_or_404(id)
         lista_roles = Role.query.all()
     except Exception:
-        flash('Error de conexión con la base de datos.', 'danger')
+        flash('Error de conexión.', 'danger')
         return redirect(url_for('usuarios'))
     if request.method == 'POST':
-        intentos = 3
-        for intento in range(intentos):
-            try:
-                nuevo_username = request.form['username']
-                usuario_existente = User.query.filter_by(username=nuevo_username).first()
-                if usuario_existente and usuario_existente.id != user.id:
-                    flash('El nombre de usuario ya está en uso.', 'danger')
-                    return redirect(url_for('editar_usuario', id=user.id))
-                user.username = nuevo_username
-                user.role = request.form['role']
-                new_password = request.form.get('password')
-                if new_password:
-                    user.password_hash = generate_password_hash(new_password)
-                db.session.commit()
-                flash('Usuario actualizado correctamente!', 'success')
-                return redirect(url_for('usuarios'))
-            except Exception as e:
-                db.session.rollback()
-                if intento < (intentos - 1):
-                    time.sleep(1)
-                else:
-                    flash(f'Error al actualizar usuario: {str(e)}', 'danger')
+        try:
+            nuevo_username = request.form['username']
+            usuario_existente = User.query.filter_by(username=nuevo_username).first()
+            if usuario_existente and usuario_existente.id != user.id:
+                flash('El nombre de usuario ya está en uso.', 'danger')
+                return redirect(url_for('editar_usuario', id=user.id))
+            user.username = nuevo_username
+            user.role = request.form['role']
+            new_password = request.form.get('password')
+            if new_password:
+                user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Usuario actualizado!', 'success')
+            return redirect(url_for('usuarios'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_usuario.html', user=user, roles=lista_roles, hostname=socket.gethostname())
 
 @app.route('/usuario/eliminar/<int:id>')
@@ -463,23 +415,16 @@ def eliminar_usuario(id):
     if id == session.get('user_id'):
         flash('No puedes eliminar tu propio usuario activo.', 'warning')
         return redirect(url_for('usuarios'))
-    intentos = 3
-    for intento in range(intentos):
-        try:
-            user = User.query.get_or_404(id)
-            db.session.delete(user)
-            db.session.commit()
-            flash('Usuario eliminado correctamente.', 'success')
-            return redirect(url_for('usuarios'))
-        except Exception as e:
-            db.session.rollback()
-            if intento < (intentos - 1):
-                time.sleep(1)
-            else:
-                flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
+    try:
+        user = User.query.get_or_404(id)
+        db.session.delete(user)
+        db.session.commit()
+        flash('Usuario eliminado.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('usuarios'))
 
-# ---------- ROLES ----------
 @app.route('/roles', methods=['GET', 'POST'])
 @login_required
 @permission_required('gestionar_usuarios')
@@ -496,7 +441,7 @@ def roles():
             return redirect(url_for('roles'))
         except Exception:
             db.session.rollback()
-            flash('Error al crear el rol (quizás ya existe).', 'danger')
+            flash('Error al crear el rol.', 'danger')
     lista_roles = Role.query.all()
     return render_template('roles.html', roles=lista_roles, hostname=socket.gethostname())
 
@@ -507,14 +452,14 @@ def eliminar_rol(id):
     try:
         rol = Role.query.get_or_404(id)
         if rol.name in ['admin', 'sistemas']:
-            flash('No puedes eliminar los roles base del sistema.', 'warning')
+            flash('No puedes eliminar los roles base.', 'warning')
             return redirect(url_for('roles'))
         db.session.delete(rol)
         db.session.commit()
-        flash('Rol eliminado correctamente.', 'success')
+        flash('Rol eliminado.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar el rol: {str(e)}', 'danger')
+        flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('roles'))
 
 if __name__ == '__main__':
