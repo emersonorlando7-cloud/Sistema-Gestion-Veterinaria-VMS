@@ -58,7 +58,8 @@
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Cita y Notas Médicas</h5>
         <div class="row g-3 mb-4 mt-1">
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Fecha y Hora *</label>
+                <label class="form-label fw-semibold">Editar Fecha y Hora *</label>
+                <!-- type="datetime-local" permite editar el día y la hora con un calendario -->
                 <input type="datetime-local" class="form-control" name="appointment_date" value="{{ consulta.appointment_date.strftime('%Y-%m-%dT%H:%M') if consulta.appointment_date else '' }}">
             </div>
             <div class="col-md-6">
