@@ -18,20 +18,29 @@
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
         </div>
         <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }}</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Salir</a>
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
         </div>
     </div>
 </nav>
 
 <main class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-file-medical text-info"></i> Ficha Clínica: {{ pet.name }}</h2>
         <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a la lista</a>
     </div>
 
     <div class="row g-4">
-        <!-- Tarjeta del Dueño -->
         <div class="col-md-5">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-dark text-white"><i class="bi bi-person-badge"></i> Datos del Dueño</div>
@@ -46,7 +55,6 @@
             </div>
         </div>
 
-        <!-- Tarjeta de la Mascota -->
         <div class="col-md-7">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-primary text-white"><i class="bi bi-github"></i> Datos de la Mascota</div>
@@ -62,7 +70,6 @@
         </div>
     </div>
 
-    <!-- Historial de Consultas -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-success text-white"><i class="bi bi-clock-history"></i> Historial de Consultas</div>
         <div class="card-body p-0">
@@ -73,7 +80,6 @@
                 <tbody>
                     {% for c in consultas %}
                     <tr>
-                        <!-- SOLUCIÓN AL ERROR 500: Verifica si la fecha existe antes de formatearla -->
                         <td>
                             {% if c.appointment_date %}
                                 {{ c.appointment_date.strftime('%d/%m/%Y %H:%M') }}
@@ -89,6 +95,37 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Bitácora del personal -->
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Notas del Personal</div>
+        <div class="card-body">
+            {% if can_add_note %}
+            <form method="POST" action="{{ url_for('agregar_bitacora', id=pet.id) }}" class="mb-3">
+                <label class="form-label fw-semibold">Nueva nota</label>
+                <textarea class="form-control mb-2" name="note" rows="2" placeholder="Ej: Se aplicó vacuna antirrábica. Paciente muy inquieto." required></textarea>
+                <button type="submit" class="btn btn-warning"><i class="bi bi-plus-circle"></i> Agregar Nota</button>
+            </form>
+            <hr>
+            {% endif %}
+
+            {% if bitacora %}
+            <div class="list-group">
+                {% for b in bitacora %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted"><i class="bi bi-person-circle"></i> <strong>{{ b.author }}</strong></small>
+                        <small class="text-muted"><i class="bi bi-clock"></i> {{ b.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    <p class="mb-0">{{ b.note }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">Aún no hay notas en la bitácora de este paciente.</p>
+            {% endif %}
         </div>
     </div>
 </main>
