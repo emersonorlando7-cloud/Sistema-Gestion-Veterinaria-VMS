@@ -16,8 +16,9 @@
             <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <!-- Enlace al panel de estado del sistema -->
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
-        <!-- Botón de Salir agregado aquí -->
         <div class="d-flex align-items-center text-white">
             <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
