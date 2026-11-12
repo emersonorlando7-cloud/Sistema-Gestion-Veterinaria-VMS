@@ -261,6 +261,9 @@ def inicio():
         inicio_dia = datetime.combine(hoy, dt_time.min)
         # Suma un día para obtener mañana a las 00:00:00.
         fin_dia = inicio_dia + timedelta(days=1)
+        
+        # Suma 15 días a partir de mañana para limitar las próximas citas.
+        fin_rango_futuras = fin_dia + timedelta(days=15)
 
         # Cuenta las citas programadas entre las 00:00 y las 23:59 de hoy.
         consultas_hoy = Consultation.query.filter(
@@ -278,13 +281,14 @@ def inicio():
             Consultation.appointment_date < fin_dia
         ).order_by(Consultation.appointment_date).all()
 
-        # Trae las citas futuras (a partir de mañana) con sus detalles.
+        # Trae las citas futuras (desde mañana hasta un máximo de 15 días) con sus detalles.
         citas_futuras = db.session.query(Consultation, Pet, Owner).join(
             Pet, Consultation.pet_id == Pet.id
         ).join(
             Owner, Pet.owner_id == Owner.id
         ).filter(
-            Consultation.appointment_date >= fin_dia
+            Consultation.appointment_date >= fin_dia,
+            Consultation.appointment_date <= fin_rango_futuras
         ).order_by(Consultation.appointment_date).all()
 
     except Exception:
@@ -605,6 +609,58 @@ def agregar_bitacora(id):
         flash(f'Error al guardar la nota: {str(e)}', 'danger')
     # Redirige de vuelta a la ficha clínica.
     return redirect(url_for('ver_paciente', id=id))
+
+# --- RUTA: EDITAR NOTA DE BITÁCORA ---
+@app.route('/bitacora/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_bitacora(id):
+    # Busca la nota por su ID.
+    nota = Bitacora.query.get_or_404(id)
+    # Valida que el usuario sea admin, sistemas o el autor original de la nota.
+    if session.get('role') not in ['admin', 'sistemas'] and session.get('username') != nota.author:
+        flash('No tienes permiso para editar esta nota.', 'warning')
+        return redirect(url_for('ver_paciente', id=nota.pet_id))
+        
+    # Si el usuario envía el formulario (POST).
+    if request.method == 'POST':
+        try:
+            # Captura el nuevo texto de la nota.
+            nota.note = request.form['note']
+            # Confirma los cambios.
+            db.session.commit()
+            flash('Nota actualizada correctamente.', 'success')
+            return redirect(url_for('ver_paciente', id=nota.pet_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar: {str(e)}', 'danger')
+            
+    # Renderiza el formulario de edición pasando la nota actual.
+    return render_template('editar_bitacora.html', nota=nota, hostname=socket.gethostname())
+
+# --- RUTA: ELIMINAR NOTA DE BITÁCORA ---
+@app.route('/bitacora/eliminar/<int:id>')
+@login_required
+def eliminar_bitacora(id):
+    # Busca la nota por su ID.
+    nota = Bitacora.query.get_or_404(id)
+    # Valida que el usuario sea admin, sistemas o el autor original de la nota.
+    if session.get('role') not in ['admin', 'sistemas'] and session.get('username') != nota.author:
+        flash('No tienes permiso para eliminar esta nota.', 'warning')
+        return redirect(url_for('ver_paciente', id=nota.pet_id))
+        
+    try:
+        # Guarda el ID de la mascota antes de borrar la nota para redirigir después.
+        pet_id = nota.pet_id
+        # Elimina la nota.
+        db.session.delete(nota)
+        # Confirma el cambio.
+        db.session.commit()
+        flash('Nota eliminada correctamente.', 'success')
+        return redirect(url_for('ver_paciente', id=pet_id))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar: {str(e)}', 'danger')
+        return redirect(url_for('ver_paciente', id=nota.pet_id))
 
 # --- RUTA: GESTIÓN DE USUARIOS ---
 @app.route('/usuarios', methods=['GET', 'POST'])
