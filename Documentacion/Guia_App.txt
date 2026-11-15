@@ -101,7 +101,7 @@ class Consultation(db.Model):
     id = db.Column(db.Integer, primary_key=True)         # Llave primaria.
     pet_id = db.Column(db.Integer, db.ForeignKey('pets.id')) # Relación con la mascota.
     reason = db.Column(db.Text)                          # Motivo de la consulta.
-    diagnosis = db.Column(db.Text)                       # Diagnóstico médico.
+    diagnosis = db.Column(db.Text)                       # Diagnóstico médico u observaciones.
     appointment_date = db.Column(db.DateTime, nullable=False) # Fecha y hora exacta de la cita.
 
 # Modelo para la bitácora de notas del personal.
