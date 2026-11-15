@@ -28,11 +28,10 @@
 <main class="container my-5">
     <div class="text-center mb-5">
         <h2><i class="bi bi-activity text-primary"></i> Estado del Sistema en Tiempo Real</h2>
-        <p class="text-muted">Esta página demuestra la Alta Disponibilidad y el Balanceo de Carga del proyecto.</p>
+        <h4 class="text-secondary mt-3">Balanceo de Carga</h4>
     </div>
 
     <div class="row justify-content-center g-4">
-        
         <div class="col-md-5">
             <div class="card border-0 shadow-lg text-center h-100">
                 <div class="card-header bg-primary text-white py-3">
@@ -43,7 +42,7 @@
                         <i class="bi bi-server"></i>
                     </div>
                     <h1 class="fw-bold mb-0">{{ app_actual }}</h1>
-                    <p class="text-muted mt-2">Atendiendo esta solicitud</p>
+                    <p class="text-muted mt-2">Atendiendo tu sesión actual</p>
                 </div>
                 <div class="card-footer bg-white py-3">
                     <span class="badge bg-success"><i class="bi bi-check-circle"></i> HAProxy RoundRobin Activo</span>
@@ -68,14 +67,15 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="text-center mt-5">
         <a href="{{ url_for('estado_sistema') }}" class="btn btn-primary btn-lg px-5 shadow">
-            <i class="bi bi-arrow-clockwise"></i> Recargar para ver Balanceo
+            <i class="bi bi-arrow-clockwise"></i> Recargar Panel de Estado
         </a>
-        <p class="text-muted mt-3 small">Si recargas varias veces, verás que el servidor de aplicación cambia entre app-01 y app-02. Si apagas db-01, verás cómo este panel cambia a db-02 automáticamente.</p>
+        <p class="text-muted mt-4 small mx-auto" style="max-width: 700px;">
+            <i class="bi bi-info-circle"></i> <strong>Nota técnica:</strong> Si este servidor llegara a fallar, HAProxy te redirigirá automáticamente al otro nodo para mantener la aplicación en línea.
+        </p>
     </div>
 </main>
 </body>
