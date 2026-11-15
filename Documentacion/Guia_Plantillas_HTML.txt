@@ -166,6 +166,8 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -265,6 +267,8 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
         </p>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -382,6 +386,8 @@ PLANTILLA: templates/index.html (Formulario de Registro)
         </div>
     </form>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -411,6 +417,7 @@ PLANTILLA: templates/editar_paciente.html (Edición Completa)
             <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <!-- Enlace al panel de diagnóstico del sistema. -->
             <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
         <div class="d-flex align-items-center text-white">
@@ -491,6 +498,8 @@ PLANTILLA: templates/editar_paciente.html (Edición Completa)
         </div>
     </form>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -557,6 +566,8 @@ PLANTILLA: templates/editar_bitacora.html (Edición de Nota)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -720,6 +731,8 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -808,6 +821,8 @@ PLANTILLA: templates/pacientes.html (Lista de Pacientes)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -913,6 +928,8 @@ PLANTILLA: templates/usuarios.html (Gestión de Usuarios)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -1018,6 +1035,8 @@ PLANTILLA: templates/roles.html (Gestión de Roles)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -1075,6 +1094,8 @@ PLANTILLA: templates/login.html (Inicio de Sesión)
             </form>
         </div>
     </div>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
@@ -1164,5 +1185,7 @@ PLANTILLA: templates/editar_usuario.html (Edición de Usuario)
         </div>
     </div>
 </main>
+<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
