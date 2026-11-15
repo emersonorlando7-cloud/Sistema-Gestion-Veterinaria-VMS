@@ -76,7 +76,7 @@
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
-                    <tr><th>Fecha</th><th>Motivo de Consulta</th><th>Diagnóstico</th></tr>
+                    <tr><th>Fecha</th><th>Motivo de Consulta</th><th>Observaciones / Diagnóstico</th></tr>
                 </thead>
                 <tbody>
                     {% for c in consultas %}
@@ -100,7 +100,7 @@
     </div>
 
     <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Notas del Personal</div>
+        <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Diagnóstico</div>
         <div class="card-body">
             {% if can_add_note %}
             <form method="POST" action="{{ url_for('agregar_bitacora', id=pet.id) }}" class="mb-3">
