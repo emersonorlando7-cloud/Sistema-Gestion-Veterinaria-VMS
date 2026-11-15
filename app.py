@@ -102,7 +102,9 @@ def permission_required(permission):
             role_db = Role.query.filter_by(name=user_role).first()
             if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
                 return f(*args, **kwargs)
-            return "<script>alert('⛔ No tienes permisos.'); window.history.back();</script>"
+            
+            flash('⛔ No tienes permisos para acceder a esta sección.', 'danger')
+            return redirect(url_for('inicio'))
         return decorated_function
     return decorator
 
@@ -158,7 +160,6 @@ def inicio():
         inicio_dia = datetime.combine(hoy, dt_time.min)
         fin_dia = inicio_dia + timedelta(days=1)
         
-        # NUEVO: Rango de 15 días para próximas citas
         fin_rango_futuras = fin_dia + timedelta(days=15)
 
         consultas_hoy = Consultation.query.filter(
@@ -312,12 +313,27 @@ def editar_paciente(id):
                 weight = request.form.get('pet_weight')
                 pet.age = int(age) if age else None
                 pet.weight = float(weight) if weight else None
+                
                 if consulta:
                     appointment_str = request.form.get('appointment_date')
                     if appointment_str:
-                        consulta.appointment_date = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                        nueva_fecha = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                        
+                        conflicto = Consultation.query.filter(
+                            Consultation.appointment_date == nueva_fecha,
+                            Consultation.id != consulta.id
+                        ).first()
+                        
+                        if conflicto:
+                            flash('Error: Este horario ya está ocupado por otro paciente.', 'warning')
+                            db.session.rollback()
+                            return redirect(url_for('editar_paciente', id=id))
+                            
+                        consulta.appointment_date = nueva_fecha
+                        
                     consulta.reason = request.form.get('reason')
                     consulta.diagnosis = request.form.get('diagnosis')
+                    
                 db.session.commit()
                 flash('Actualizado correctamente!', 'success')
                 return redirect(url_for('pacientes'))
@@ -380,16 +396,13 @@ def agregar_bitacora(id):
         flash(f'Error al guardar la nota: {str(e)}', 'danger')
     return redirect(url_for('ver_paciente', id=id))
 
-# NUEVA RUTA: Editar Bitácora
 @app.route('/bitacora/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_bitacora(id):
     nota = Bitacora.query.get_or_404(id)
-    # Validación: Solo el autor o admin/sistemas pueden editar
     if session.get('role') not in ['admin', 'sistemas'] and session.get('username') != nota.author:
         flash('No tienes permiso para editar esta nota.', 'warning')
         return redirect(url_for('ver_paciente', id=nota.pet_id))
-        
     if request.method == 'POST':
         try:
             nota.note = request.form['note']
@@ -399,19 +412,15 @@ def editar_bitacora(id):
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar: {str(e)}', 'danger')
-            
     return render_template('editar_bitacora.html', nota=nota, hostname=socket.gethostname())
 
-# NUEVA RUTA: Eliminar Bitácora
 @app.route('/bitacora/eliminar/<int:id>')
 @login_required
 def eliminar_bitacora(id):
     nota = Bitacora.query.get_or_404(id)
-    # Validación: Solo el autor o admin/sistemas pueden eliminar
     if session.get('role') not in ['admin', 'sistemas'] and session.get('username') != nota.author:
         flash('No tienes permiso para eliminar esta nota.', 'warning')
         return redirect(url_for('ver_paciente', id=nota.pet_id))
-        
     try:
         pet_id = nota.pet_id
         db.session.delete(nota)
