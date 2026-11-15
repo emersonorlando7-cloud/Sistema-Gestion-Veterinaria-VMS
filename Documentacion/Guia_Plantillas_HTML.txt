@@ -206,10 +206,10 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
 </nav>
 
 <main class="container my-5">
-    <!-- Título central. -->
+    <!-- Título central con el subtítulo. -->
     <div class="text-center mb-5">
         <h2><i class="bi bi-activity text-primary"></i> Estado del Sistema en Tiempo Real</h2>
-        <p class="text-muted">Esta página demuestra la Alta Disponibilidad y el Balanceo de Carga del proyecto.</p>
+        <h4 class="text-secondary mt-3">Balanceo de Carga</h4>
     </div>
 
     <div class="row justify-content-center g-4">
@@ -225,7 +225,7 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
                     </div>
                     <!-- Variable que imprime 'app-01' o 'app-02'. -->
                     <h1 class="fw-bold mb-0">{{ app_actual }}</h1>
-                    <p class="text-muted mt-2">Atendiendo esta solicitud</p>
+                    <p class="text-muted mt-2">Atendiendo tu sesión actual</p>
                 </div>
                 <div class="card-footer bg-white py-3">
                     <span class="badge bg-success"><i class="bi bi-check-circle"></i> HAProxy RoundRobin Activo</span>
@@ -257,9 +257,12 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
     <div class="text-center mt-5">
         <!-- Botón que recarga la misma URL para forzar un nuevo balanceo o failover. -->
         <a href="{{ url_for('estado_sistema') }}" class="btn btn-primary btn-lg px-5 shadow">
-            <i class="bi bi-arrow-clockwise"></i> Recargar para ver Balanceo
+            <i class="bi bi-arrow-clockwise"></i> Recargar Panel de Estado
         </a>
-        <p class="text-muted mt-3 small">Si recargas varias veces, verás que el servidor de aplicación cambia. Si apagas db-01, este panel cambiará a db-02 automáticamente.</p>
+        <!-- Nota técnica simplificada con el texto exacto solicitado. -->
+        <p class="text-muted mt-4 small mx-auto" style="max-width: 700px;">
+            <i class="bi bi-info-circle"></i> <strong>Nota técnica:</strong> Si este servidor llegara a fallar, HAProxy te redirigirá automáticamente al otro nodo para mantener la aplicación en línea.
+        </p>
     </div>
 </main>
 </body>
@@ -714,6 +717,450 @@ PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
             {% else %}
             <p class="text-muted text-center py-3 mb-0">Aún no hay notas en la bitácora de este paciente.</p>
             {% endif %}
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/pacientes.html (Lista de Pacientes)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Pacientes - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    <!-- Mensajes flash. -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4"><i class="bi bi-list-ul text-primary"></i> Lista de Pacientes</h2>
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>No.</th><th>Mascota</th><th>Especie</th><th>Dueño</th><th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Bucle que recorre la lista de pacientes. -->
+                    {% for pet, owner in pacientes %}
+                    <tr>
+                        <!-- loop.index genera la numeración 1, 2, 3... -->
+                        <td class="text-muted">#{{ loop.index }}</td>
+                        <td><i class="bi bi-github text-primary"></i> <strong>{{ pet.name }}</strong></td>
+                        <td>{{ pet.species }}</td>
+                        <td>{{ owner.name }}</td>
+                        <td class="text-end">
+                            <!-- Botones de acción. -->
+                            <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-eye"></i> Ver</a>
+                            <a href="{{ url_for('editar_paciente', id=pet.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Editar</a>
+                            <!-- Solo admin y sistemas ven el botón eliminar. -->
+                            {% if session.get('role') in ['admin', 'sistemas'] %}
+                            <a href="{{ url_for('eliminar_paciente', id=pet.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar paciente?')"><i class="bi bi-trash"></i> Eliminar</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No hay pacientes registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/usuarios.html (Gestión de Usuarios)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Usuarios - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link active" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    <!-- Mensajes flash. -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- Formulario para crear usuario. -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">Crear Nuevo Usuario</div>
+                <div class="card-body">
+                    <form method="POST" action="/usuarios">
+                        <div class="mb-2"><label>Usuario</label><input type="text" name="username" class="form-control" required></div>
+                        <div class="mb-2"><label>Contraseña</label><input type="password" name="password" class="form-control" required></div>
+                        <div class="mb-3">
+                            <label>Rol</label>
+                            <select name="role" class="form-select">
+                                <!-- Carga dinámicamente los roles desde la BD. -->
+                                {% for r in roles %}
+                                <option value="{{ r.name }}">{{ r.name|capitalize }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar Usuario</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de usuarios registrados. -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">Usuarios Registrados</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr><th>No.</th><th>Usuario</th><th>Rol</th><th class="text-end">Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for u in usuarios %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ u.username }}</td>
+                                <td><span class="badge bg-info text-dark">{{ u.role }}</span></td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('editar_usuario', id=u.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                    <!-- Evita que el usuario se elimine a sí mismo. -->
+                                    {% if u.id != session.get('user_id') %}
+                                    <a href="{{ url_for('eliminar_usuario', id=u.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar a este usuario?')"><i class="bi bi-trash"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/roles.html (Gestión de Roles)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Roles - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link active" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    <!-- Mensajes flash. -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4"><i class="bi bi-shield-lock text-primary"></i> Gestión de Roles y Permisos</h2>
+    <div class="row">
+        <!-- Formulario de creación de rol. -->
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">Crear Nuevo Rol</div>
+                <div class="card-body">
+                    <form method="POST" action="/roles">
+                        <div class="mb-3">
+                            <label>Nombre del Rol</label>
+                            <input type="text" name="role_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Permisos</label>
+                            <!-- Cada checkbox con name="permissions" enviará su value al backend. -->
+                            <div class="form-check"><input type="checkbox" name="permissions" value="ver_pacientes" class="form-check-input"> Ver Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="crear_pacientes" class="form-check-input"> Crear Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="editar_pacientes" class="form-check-input"> Editar Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="eliminar_pacientes" class="form-check-input"> Eliminar Pacientes</div>
+                            <div class="form-check"><input type="checkbox" name="permissions" value="gestionar_usuarios" class="form-check-input"> Gestionar Usuarios</div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar Rol</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de roles existentes. -->
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">Roles Existentes</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>No.</th><th>Rol</th><th>Permisos</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            {% for r in roles %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ r.name }}</td>
+                                <td><small>{{ r.permissions }}</small></td>
+                                <td>
+                                    <!-- Protege los roles base (admin y sistemas) de ser eliminados. -->
+                                    {% if r.name not in ['admin', 'sistemas'] %}
+                                    <a href="{{ url_for('eliminar_rol', id=r.id) }}" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/login.html (Inicio de Sesión)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Login - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Estilos personalizados para centrar el login. -->
+    <style>
+        body { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); min-height: 100vh; display: flex; align-items: center; }
+        .login-card { max-width: 400px; margin: auto; }
+    </style>
+</head>
+<body>
+    <!-- Tarjeta de login centrada. -->
+    <div class="card login-card shadow-lg border-0 rounded-4">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <!-- Ícono y título. -->
+                <i class="bi bi-heart-pulse fs-1 text-primary"></i>
+                <h3 class="fw-bold mt-2">VetSystem</h3>
+            </div>
+            
+            <!-- Mensajes de error flash. -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} p-2 text-center">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            
+            <!-- Formulario que envía los datos a /login por POST. -->
+            <form method="POST" action="/login">
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <input type="text" class="form-control" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <!-- El tipo password oculta los caracteres. -->
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/editar_usuario.html (Edición de Usuario)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <!-- Título de la pestaña. -->
+    <title>Editar Usuario - VetSystem</title>
+    <!-- Bootstrap CSS. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link active" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-4">
+    <!-- Centra el formulario. -->
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <!-- Mensajes flash. -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Usuario: {{ user.username }}</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Formulario de edición. -->
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label>Nombre de Usuario</label>
+                            <!-- Precarga el nombre actual. -->
+                            <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Nueva Contraseña (dejar en blanco para mantener la actual)</label>
+                            <!-- No se precarga la contraseña por seguridad. -->
+                            <input type="password" name="password" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label>Rol</label>
+                            <select name="role" class="form-select">
+                                {% for r in roles %}
+                                <!-- Marca como 'selected' el rol actual del usuario. -->
+                                <option value="{{ r.name }}" {% if user.role == r.name %}selected{% endif %}>{{ r.name|capitalize }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2 border-top pt-3">
+                            <button type="submit" class="btn btn-warning w-100"><i class="bi bi-save"></i> Guardar Cambios</button>
+                            <a href="{{ url_for('usuarios') }}" class="btn btn-outline-secondary w-100">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </main>

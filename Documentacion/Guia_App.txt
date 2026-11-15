@@ -168,8 +168,9 @@ def permission_required(permission):
             # Si el rol tiene el permiso o el permiso 'all', permite el acceso.
             if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
                 return f(*args, **kwargs)
-            # Si no tiene permiso, lanza una alerta JavaScript y devuelve al usuario atrás.
-            return "<script>alert('⛔ No tienes permisos.'); window.history.back();</script>"
+            # Si no tiene permiso, muestra un mensaje flash de peligro y redirige al inicio.
+            flash('⛔ No tienes permisos para acceder a esta sección.', 'danger')
+            return redirect(url_for('inicio'))
         return decorated_function
     return decorator
 
@@ -493,9 +494,25 @@ def editar_paciente(id):
                 if consulta:
                     # Captura la nueva fecha de la cita.
                     appointment_str = request.form.get('appointment_date')
-                    # Si hay fecha, la convierte y actualiza.
+                    # Si hay fecha, la convierte.
                     if appointment_str:
-                        consulta.appointment_date = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                        nueva_fecha = datetime.strptime(appointment_str, '%Y-%m-%dT%H:%M')
+                        
+                        # Verifica si ya existe otra cita en ese mismo horario (excluyendo la cita actual).
+                        conflicto = Consultation.query.filter(
+                            Consultation.appointment_date == nueva_fecha,
+                            Consultation.id != consulta.id
+                        ).first()
+                        
+                        # Si hay conflicto, cancela la actualización y avisa al usuario.
+                        if conflicto:
+                            flash('Error: Este horario ya está ocupado por otro paciente.', 'warning')
+                            db.session.rollback()
+                            return redirect(url_for('editar_paciente', id=id))
+                            
+                        # Si no hay conflicto, actualiza la fecha.
+                        consulta.appointment_date = nueva_fecha
+                        
                     # Actualiza el motivo.
                     consulta.reason = request.form.get('reason')
                     # Actualiza el diagnóstico/notas.

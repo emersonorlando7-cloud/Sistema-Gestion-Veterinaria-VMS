@@ -10,7 +10,8 @@
 4. Balanceador de Carga (lb-01)
 5. Configuración de Firewalls (UFW)
 6. Exposición a Internet (Ngrok)
-7. Solución de Errores (Troubleshooting General)
+7. Sistema de Respaldos Automáticos (rclone)
+8. Solución de Errores (Troubleshooting General)
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -356,7 +357,57 @@ sudo systemctl start ngrok
 
 
 ═══════════════════════════════════════════════════════════════════════
-7. SOLUCIÓN DE ERRORES (TROUBLESHOOTING GENERAL)
+7. SISTEMA DE RESPALDOS AUTOMÁTICOS (RCLONE)
+═══════════════════════════════════════════════════════════════════════
+Objetivo: Extraer la base de datos a través de HAProxy y subirla a Google Drive diariamente.
+
+Paso 7.1: Instalar dependencias en lb-01
+# Instala rclone (para Google Drive) y el cliente de MySQL.
+sudo apt install rclone mysql-client -y
+
+Paso 7.2: Crear archivo de credenciales seguro
+# Abre el editor para crear el archivo oculto.
+nano ~/.my.cnf
+
+# Contenido del archivo:
+[client]
+host=192.168.56.10
+user=app_user
+password=AppPass123!
+
+# Restringe los permisos para que solo tu usuario pueda leerlo.
+chmod 600 ~/.my.cnf
+
+Paso 7.3: Crear el script de respaldo
+# Crea el archivo del script.
+sudo nano /usr/local/bin/respaldo_db.sh
+
+# Contenido del script:
+#!/bin/bash
+FECHA=$(date +%Y-%m-%d_%H-%M-%S)
+ARCHIVO_SQL="/tmp/vet_clinic_db_$FECHA.sql"
+ARCHIVO_ZIP="/tmp/vet_clinic_db_$FECHA.sql.gz"
+
+# Se usa --no-tablespaces para evitar el error de privilegios en MySQL 8.
+mysqldump --no-tablespaces vet_clinic_db > $ARCHIVO_SQL
+
+gzip -c $ARCHIVO_SQL > $ARCHIVO_ZIP
+rclone copy $ARCHIVO_ZIP gdrive:Respaldos_VetSystem/DB/
+rm -f $ARCHIVO_SQL $ARCHIVO_ZIP
+
+# Otorga permisos de ejecución al script.
+sudo chmod +x /usr/local/bin/respaldo_db.sh
+
+Paso 7.4: Automatizar con Cron
+# Abre el editor de tareas programadas.
+crontab -e
+
+# Añade esta línea al final para ejecutar a las 3:00 AM diariamente:
+0 3 * * * /usr/local/bin/respaldo_db.sh >> /var/log/backup_db.log 2>&1
+
+
+═══════════════════════════════════════════════════════════════════════
+8. SOLUCIÓN DE ERRORES (TROUBLESHOOTING GENERAL)
 ═══════════════════════════════════════════════════════════════════════
 A. "504 Gateway Timeout" o página no carga:
    - Causa: HAProxy no puede conectar con las apps.
@@ -381,6 +432,10 @@ E. Al editar campos se genera error 500:
 F. No se puede eliminar un paciente (Error 1451):
    - Causa: El paciente tiene consultas o bitácora asociadas.
    - Solución: El código actual ya borra las tablas hijas antes de eliminar la mascota.
+
+G. Error "Access denied; you need (at least one of) the PROCESS privilege(s)" al hacer respaldo:
+   - Causa: MySQL 8 intenta leer tablespaces y el usuario no tiene permiso.
+   - Solución: Añadir la opción --no-tablespaces al comando mysqldump (ya incluido en el script).
 
 ═══════════════════════════════════════════════════════════════════════
 FIN DE LA GUÍA DE PROCESO
