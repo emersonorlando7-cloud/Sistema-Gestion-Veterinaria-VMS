@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════════
    CÓDIGO FUENTE: app.py (BACKEND FLASK)
-   Proyecto: VetSystem - Alta Disponibilidad
+   Proyecto: Sistema de Gestión Veterinaria (VMS)
 ═══════════════════════════════════════════════════════════════════════
 
 # ==============================================================================
@@ -22,21 +22,39 @@ import time
 from datetime import datetime, date, time as dt_time, timedelta
 # text: Permite ejecutar consultas SQL puras a través de SQLAlchemy.
 from sqlalchemy import text
+# os: Proporciona acceso a las variables de entorno del sistema.
+import os
+# load_dotenv: Carga las variables definidas en el archivo .env dentro de os.environ.
+from dotenv import load_dotenv
+
+# Ejecuta la carga del archivo .env al iniciar la aplicación.
+load_dotenv()
 
 # ==============================================================================
 # 2. CONFIGURACIÓN INICIAL
 # ==============================================================================
 # Inicializa la aplicación Flask con el nombre del módulo actual.
 app = Flask(__name__)
-# Clave secreta utilizada para firmar las cookies de sesión. DEBE ser idéntica en app-01 y app-02.
-app.secret_key = 'clave_secreta_vetsystem_segura'
+# Clave secreta leída desde el .env. Si no existe, usa un valor por defecto inseguro.
+app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 # Configura la política SameSite de la cookie para evitar problemas de seguridad y bloqueos.
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Evita que JavaScript pueda acceder a la cookie de sesión, mejorando la seguridad.
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+# Configura si la cookie solo viaja por HTTPS. Lee del .env y convierte el string "True" a booleano.
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 
-# URI de conexión a la base de datos. Apunta a HAProxy (192.168.56.10) para aprovechar el Failover.
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
+# Captura las credenciales de la base de datos desde las variables de entorno.
+DB_USER = os.getenv('DB_USER', 'app_user')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST', '192.168.56.10')
+DB_PORT = os.getenv('DB_PORT', '3306')
+DB_NAME = os.getenv('DB_NAME', 'vet_clinic_db')
+
+# Construye la URI de conexión usando las variables capturadas. Apunta a HAProxy.
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+)
 # Desactiva el rastreo de modificaciones para ahorrar memoria RAM.
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
