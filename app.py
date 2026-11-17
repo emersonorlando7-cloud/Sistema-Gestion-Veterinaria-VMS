@@ -6,16 +6,34 @@ import socket
 import time
 from datetime import datetime, date, time as dt_time, timedelta
 from sqlalchemy import text
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'clave_secreta_vetsystem_segura'
+
+app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
+DB_USER = os.getenv('DB_USER', 'app_user')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST', '192.168.56.10')
+DB_PORT = os.getenv('DB_PORT', '3306')
+DB_NAME = os.getenv('DB_NAME', 'vet_clinic_db')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_size': 10, 'max_overflow': 20, 'pool_recycle': 280, 'pool_pre_ping': True
+    'pool_size': 10,
+    'max_overflow': 20,
+    'pool_recycle': 280,
+    'pool_pre_ping': True
 }
 
 db = SQLAlchemy(app)
@@ -102,7 +120,6 @@ def permission_required(permission):
             role_db = Role.query.filter_by(name=user_role).first()
             if role_db and (permission in role_db.permissions.split(',') or 'all' in role_db.permissions.split(',')):
                 return f(*args, **kwargs)
-            
             flash('⛔ No tienes permisos para acceder a esta sección.', 'danger')
             return redirect(url_for('inicio'))
         return decorated_function
@@ -159,7 +176,6 @@ def inicio():
         hoy = datetime.now().date()
         inicio_dia = datetime.combine(hoy, dt_time.min)
         fin_dia = inicio_dia + timedelta(days=1)
-        
         fin_rango_futuras = fin_dia + timedelta(days=15)
 
         consultas_hoy = Consultation.query.filter(
