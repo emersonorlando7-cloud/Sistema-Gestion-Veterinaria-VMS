@@ -1,4 +1,23 @@
+# Flask: framework web principal del proyecto. Versión fijada para que app-01 y app-02 corran exactamente igual.
 Flask==3.0.2
+
+# Flask-SQLAlchemy: ORM que mapea las tablas MySQL a clases Python (Role, User, Owner, Pet, Consultation, Bitacora).
 Flask-SQLAlchemy==3.1.1
+
+# PyMySQL: driver puro Python que conecta SQLAlchemy con MySQL.
 PyMySQL==1.1.0
+
+# cryptography: obligatorio para MySQL 8, que usa autenticación caching_sha2_password. Sin esta librería, PyMySQL falla con "cryptography is required for sha256_password or caching_sha2_password auth methods".
 cryptography==42.0.2
+
+# gunicorn: servidor WSGI que corre Flask en producción con 3 workers (configurado en vetsystem.service).
+gunicorn==21.2.0
+
+# python-dotenv: lee el archivo .env al arrancar y carga las variables en os.environ.
+python-dotenv==1.0.1
+
+# Flask-WTF: protección CSRF en formularios.
+Flask-WTF==1.2.1
+
+# argon2-cffi: hashing de contraseñas con Argon2id.
+argon2-cffi==23.1.0
