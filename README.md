@@ -1,4 +1,4 @@
-# 🐾 VetSystem — Sistema Veterinario con Alta Disponibilidad
+# 🐾 Sistema de Gestión Veterinaria (VMS) — Alta Disponibilidad
 
 Aplicación web para la gestión de una clínica veterinaria (pacientes, dueños,
 citas médicas, bitácora clínica, usuarios y roles), desplegada sobre una
@@ -58,9 +58,9 @@ Toda la documentación del proyecto vive en la carpeta [`Documentacion/`](Docume
 ## 🚀 Inicio rápido (desarrollo local)
 
 ```bash
-# Clonar el repositorio.
-git clone https://github.com/emersonorlando7-cloud/VetSystem_APP.git
-cd VetSystem_APP
+# Clonar el repositorio (usando el nombre actualizado).
+git clone https://github.com/emersonorlando7-cloud/Sistema-Gestion-Veterinaria-VMS.git
+cd Sistema-Gestion-Veterinaria-VMS
 
 # Crear y activar el entorno virtual.
 python3 -m venv venv
