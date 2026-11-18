@@ -133,24 +133,12 @@ class Bitacora(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now) # Fecha y hora automática al crear la nota.
 
 # ==============================================================================
-# 4. CREACIÓN AUTOMÁTICA DE TABLAS Y USUARIO ADMIN
+# 4. INICIALIZACIÓN DE LA BASE DE DATOS
 # ==============================================================================
-# Contexto de aplicación necesario para interactuar con la base de datos al arrancar.
-with app.app_context():
-    try:
-        # Crea todas las tablas definidas arriba si aún no existen.
-        db.create_all()
-        # Verifica si el usuario 'emerson_7' ya existe en la base de datos.
-        if not User.query.filter_by(username='emerson_7').first():
-            # Si no existe, crea el usuario admin con contraseña encriptada.
-            admin_user = User(username='emerson_7', password_hash=generate_password_hash('P@ssw0rd'), role='admin')
-            # Agrega el nuevo usuario a la sesión de la base de datos.
-            db.session.add(admin_user)
-            # Confirma y guarda los cambios definitivamente.
-            db.session.commit()
-    except Exception as e:
-        # Si hay un error de conexión, lo imprime en la consola para diagnóstico.
-        print(f"Error al crear usuario inicial: {e}")
+# La creación de las tablas y del usuario administrador inicial se realiza de forma
+# manual ejecutando los scripts SQL en el servidor db-01 (ver Guia_Proyecto.txt).
+# La aplicación no debe intentar crear las tablas en cada arranque para evitar
+# conflictos con la replicación de MySQL (db-02).
 
 # ==============================================================================
 # 5. DECORADORES DE SEGURIDAD Y PERMISOS
