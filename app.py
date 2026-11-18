@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from functools import wraps
 import socket
 import time
@@ -37,6 +39,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db = SQLAlchemy(app)
+ph = PasswordHasher()
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
@@ -89,6 +92,15 @@ class Bitacora(db.Model):
     note = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
+def verify_password(stored_hash, password):
+    if stored_hash.startswith('$argon2'):
+        try:
+            return ph.verify(stored_hash, password)
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            return False
+    else:
+        return check_password_hash(stored_hash, password)
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -134,7 +146,10 @@ def login():
         password = request.form['password']
         try:
             user = User.query.filter_by(username=username).first()
-            if user and check_password_hash(user.password_hash, password):
+            if user and verify_password(user.password_hash, password):
+                if not user.password_hash.startswith('$argon2'):
+                    user.password_hash = ph.hash(password)
+                    db.session.commit()
                 session['user_id'] = user.id
                 session['username'] = user.username
                 session['role'] = user.role
@@ -447,7 +462,7 @@ def usuarios():
             username = request.form['username']
             password = request.form['password']
             role = request.form['role']
-            hashed_pw = generate_password_hash(password)
+            hashed_pw = ph.hash(password)
             nuevo_user = User(username=username, password_hash=hashed_pw, role=role)
             db.session.add(nuevo_user)
             db.session.commit()
@@ -484,7 +499,7 @@ def editar_usuario(id):
             user.role = request.form['role']
             new_password = request.form.get('password')
             if new_password:
-                user.password_hash = generate_password_hash(new_password)
+                user.password_hash = ph.hash(new_password)
             db.session.commit()
             flash('Usuario actualizado!', 'success')
             return redirect(url_for('usuarios'))
