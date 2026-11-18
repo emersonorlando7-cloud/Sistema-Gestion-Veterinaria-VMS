@@ -22,9 +22,9 @@ import time
 from datetime import datetime, date, time as dt_time, timedelta
 # text: Permite ejecutar consultas SQL puras a través de SQLAlchemy.
 from sqlalchemy import text
-# os: Proporciona acceso a las variables de entorno del sistema.
+# os: Proporciona acceso a las variables de entorno del sistema operativo.
 import os
-# load_dotenv: Carga las variables definidas en el archivo .env dentro de os.environ.
+# load_dotenv: Carga las variables definidas en el archivo .env dentro del entorno.
 from dotenv import load_dotenv
 
 # Ejecuta la carga del archivo .env al iniciar la aplicación.
@@ -35,6 +35,7 @@ load_dotenv()
 # ==============================================================================
 # Inicializa la aplicación Flask con el nombre del módulo actual.
 app = Flask(__name__)
+
 # Clave secreta leída desde el .env. Si no existe, usa un valor por defecto inseguro.
 app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 # Configura la política SameSite de la cookie para evitar problemas de seguridad y bloqueos.
@@ -58,7 +59,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 # Desactiva el rastreo de modificaciones para ahorrar memoria RAM.
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configuración del pool de conexiones para manejar múltiples usuarios concurrentes de forma estable.
+# Configuración del pool de conexiones para manejar múltiples usuarios concurrentes.
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 10,        # Permite mantener 10 conexiones abiertas en espera.
     'max_overflow': 20,     # Permite crear 20 conexiones adicionales si el pool está lleno.
@@ -82,7 +83,7 @@ def shutdown_session(exception=None):
 class Role(db.Model):
     __tablename__ = 'roles'                              # Nombre exacto de la tabla en MySQL.
     id = db.Column(db.Integer, primary_key=True)         # Llave primaria autoincremental.
-    name = db.Column(db.String(50), unique=True, nullable=False) # Nombre del rol (ej. secretaria), único y obligatorio.
+    name = db.Column(db.String(50), unique=True, nullable=False) # Nombre del rol, único y obligatorio.
     permissions = db.Column(db.Text, nullable=False)     # Permisos guardados como texto separado por comas.
 
 # Modelo para gestionar los usuarios que inician sesión.
@@ -108,7 +109,7 @@ class Pet(db.Model):
     id = db.Column(db.Integer, primary_key=True)         # Llave primaria.
     owner_id = db.Column(db.Integer, db.ForeignKey('owners.id')) # Llave foránea que relaciona con el dueño.
     name = db.Column(db.String(100), nullable=False)     # Nombre de la mascota (obligatorio).
-    species = db.Column(db.String(50))                   # Especie (texto libre, ej. Perro, Loro, Iguana).
+    species = db.Column(db.String(50))                   # Especie (ej. Perro, Loro, Iguana).
     breed = db.Column(db.String(50))                     # Raza de la mascota.
     age = db.Column(db.Integer)                          # Edad en años.
     weight = db.Column(db.Numeric(5, 2))                 # Peso en kilogramos con dos decimales.
