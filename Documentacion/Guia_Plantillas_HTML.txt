@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════════
    CÓDIGO FUENTE: PLANTILLAS HTML
-   Proyecto: VetSystem - Alta Disponibilidad
+   Proyecto: Sistema de Gestión Veterinaria (VMS)
 ═══════════════════════════════════════════════════════════════════════
 
 NOTA: Todas las plantillas incluyen Bootstrap 5 para el diseño y Jinja2 
@@ -8,7 +8,7 @@ para la lógica. Jinja2 usa {{ variable }} para imprimir datos y
 {% instrucción %} para bucles y condicionales.
 
 ═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/inicio.html (Panel de Control)
+PLANTILLA: templates/login.html (Inicio de Sesión)
 ═══════════════════════════════════════════════════════════════════════
 
 <!-- Declaración del tipo de documento HTML5. -->
@@ -20,70 +20,117 @@ PLANTILLA: templates/inicio.html (Panel de Control)
     <!-- Especifica la codificación de caracteres UTF-8. -->
     <meta charset="utf-8">
     <!-- Título que aparece en la pestaña del navegador. -->
-    <title>Inicio - VetSystem</title>
+    <title>Login - VetSystem</title>
     <!-- Hoja de estilos de Bootstrap 5.3.3 vía CDN. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Fuente de iconos Bootstrap Icons v1.11.3 vía CDN. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Estilos personalizados para centrar el login y dar el fondo con gradiente. -->
+    <style>
+        /* Fondo con degradado azul a morado. min-height 100vh ocupa toda la pantalla. */
+        body { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); min-height: 100vh; display: flex; align-items: center; }
+        /* Ancho máximo de la tarjeta del login. */
+        .login-card { max-width: 400px; margin: auto; }
+    </style>
 <!-- Cierre de la cabecera. -->
 </head>
-<!-- Inicio del cuerpo con fondo gris claro. -->
-<body class="bg-light">
-<!-- Barra de navegación superior con fondo azul oscuro. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <!-- Contenedor principal de la barra. -->
-    <div class="container">
-        <!-- Logo y nombre de la marca. -->
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <!-- Contenedor de los enlaces de navegación. -->
-        <div class="navbar-nav me-auto">
-            <!-- Enlace a Inicio (activo). -->
-            <a class="nav-link active" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <!-- Enlace a Registrar. -->
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <!-- Enlace a Pacientes. -->
-            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <!-- Enlace a Usuarios. -->
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <!-- Enlace a Roles. -->
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <!-- Enlace al panel de diagnóstico del sistema. -->
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        <!-- Cierre del contenedor de enlaces. -->
+<!-- Inicio del cuerpo. -->
+<body>
+    <!-- Tarjeta centrada con bordes redondeados y sombra. -->
+    <div class="card login-card shadow-lg border-0 rounded-4">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <!-- Ícono de pulso cardíaco y título. -->
+                <i class="bi bi-heart-pulse fs-1 text-primary"></i>
+                <h3 class="fw-bold mt-2">VetSystem</h3>
+            </div>
+            
+            <!-- Bloque de Jinja2 para mostrar mensajes flash (errores de contraseña). -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <!-- Alerta de Bootstrap con color según la categoría (danger = rojo). -->
+                  <div class="alert alert-{{ category }} p-2 text-center">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            
+            <!-- Formulario que envía los datos a la ruta /login por método POST. -->
+            <form method="POST" action="/login">
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <!-- El atributo name="username" es vital para que Python lo lea. -->
+                    <input type="text" class="form-control" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <!-- El tipo password oculta los caracteres con puntos. -->
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </form>
         </div>
-        <!-- Sección derecha con el nombre de usuario y botón de cerrar sesión. -->
-        <div class="d-flex align-items-center text-white">
-            <!-- Imprime el nombre de usuario y su rol. -->
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <!-- Botón para salir. -->
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        <!-- Cierre de la sección derecha. -->
-        </div>
-    <!-- Cierre del contenedor principal de la barra. -->
     </div>
-<!-- Cierre de la barra de navegación. -->
+<!-- Script de Bootstrap necesario para que funcionen las alertas. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+═══════════════════════════════════════════════════════════════════════
+PLANTILLA: templates/inicio.html (Panel de Control)
+═══════════════════════════════════════════════════════════════════════
+
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Inicio - VetSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Barra de navegación superior. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <!-- Logo de la marca. -->
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
+        <!-- Enlaces de navegación. -->
+        <div class="navbar-nav me-auto">
+            <a class="nav-link active" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
+            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
+            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
+            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
+            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
+            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
+        </div>
+        <!-- Información del usuario logueado y botón de salida. -->
+        <div class="d-flex align-items-center text-white">
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+    </div>
 </nav>
 
-<!-- Contenedor principal del contenido. -->
 <main class="container my-4">
     <!-- Título del panel. -->
     <h2 class="mb-4"><i class="bi bi-speedometer2 text-primary"></i> Panel de Control</h2>
-    <!-- Fila para las tarjetas de resumen. -->
+    
+    <!-- Fila de tarjetas de resumen. -->
     <div class="row g-3 mb-4">
-        <!-- Tarjeta de total de pacientes. -->
+        <!-- Tarjeta: Total Pacientes. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted mb-1 small text-uppercase fw-semibold">Total Pacientes</p>
-                        <!-- Imprime la variable enviada desde Flask. -->
+                        <!-- Imprime el total de pacientes calculado en Python. -->
                         <h3 class="mb-0 fw-bold">{{ total_pacientes }}</h3>
                     </div>
                     <div class="bg-primary bg-opacity-10 rounded-circle p-3"><i class="bi bi-heart-pulse fs-4 text-primary"></i></div>
                 </div>
             </div>
         </div>
-        <!-- Tarjeta de total de dueños. -->
+        <!-- Tarjeta: Total Dueños. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -95,7 +142,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                 </div>
             </div>
         </div>
-        <!-- Tarjeta de consultas totales. -->
+        <!-- Tarjeta: Consultas Totales. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -107,7 +154,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                 </div>
             </div>
         </div>
-        <!-- Tarjeta de citas de hoy. -->
+        <!-- Tarjeta: Citas para Hoy. -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
                 <div class="card-body d-flex justify-content-between align-items-center">
@@ -121,7 +168,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 
-    <!-- Tabla de Agenda de Hoy -->
+    <!-- Tabla de la Agenda de Hoy. -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-white fw-bold"><i class="bi bi-clock-history"></i> Agenda de Hoy</div>
         <div class="table-responsive">
@@ -133,17 +180,16 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                     <!-- Bucle Jinja2: recorre la lista de citas de hoy. -->
                     {% for cita, pet, owner in citas_hoy %}
                     <tr>
-                        <!-- Formatea la fecha de Python a solo hora HH:MM. -->
+                        <!-- strftime formatea la fecha de Python a solo hora y minutos. -->
                         <td><strong>{{ cita.appointment_date.strftime('%H:%M') }}</strong></td>
                         <td>{{ pet.name }}</td>
                         <td>{{ owner.name }}</td>
                         <td>{{ cita.reason }}</td>
-                        <!-- Botón para ver el detalle del paciente. -->
                         <td class="text-end">
                             <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-eye"></i> Ver</a>
                         </td>
                     </tr>
-                    <!-- Si la lista está vacía, muestra este mensaje. -->
+                    <!-- Bloque else: se ejecuta si la lista está vacía. -->
                     {% else %}
                     <tr><td colspan="5" class="text-center text-muted py-4">No hay citas programadas para hoy.</td></tr>
                     {% endfor %}
@@ -152,7 +198,7 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 
-    <!-- Tabla de Próximas Citas (Rango 15 días) -->
+    <!-- Tabla de Próximas Citas (Rango 15 días). -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-white fw-bold"><i class="bi bi-calendar-plus"></i> Próximas Citas (15 días)</div>
         <div class="table-responsive">
@@ -164,17 +210,14 @@ PLANTILLA: templates/inicio.html (Panel de Control)
                     <!-- Bucle Jinja2: recorre la lista de citas futuras. -->
                     {% for cita, pet, owner in citas_futuras %}
                     <tr>
-                        <!-- Formatea la fecha a DD/MM/AAAA HH:MM. -->
                         <td><strong>{{ cita.appointment_date.strftime('%d/%m/%Y %H:%M') }}</strong></td>
                         <td>{{ pet.name }}</td>
                         <td>{{ owner.name }}</td>
                         <td>{{ cita.reason }}</td>
-                        <!-- Botón para ver el detalle del paciente. -->
                         <td class="text-end">
                             <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-eye"></i> Ver</a>
                         </td>
                     </tr>
-                    <!-- Si la lista está vacía, muestra este mensaje. -->
                     {% else %}
                     <tr><td colspan="5" class="text-center text-muted py-4">No hay citas próximas en los siguientes 15 días.</td></tr>
                     {% endfor %}
@@ -183,7 +226,6 @@ PLANTILLA: templates/inicio.html (Panel de Control)
         </div>
     </div>
 </main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
@@ -196,11 +238,8 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
     <title>Estado del Sistema - VetSystem</title>
-    <!-- Bootstrap CSS. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -214,7 +253,6 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
             <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
             <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
             <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <!-- Enlace activo en esta página. -->
             <a class="nav-link active" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
         </div>
         <div class="d-flex align-items-center text-white">
@@ -225,7 +263,7 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
 </nav>
 
 <main class="container my-5">
-    <!-- Título central con el subtítulo. -->
+    <!-- Título central. -->
     <div class="text-center mb-5">
         <h2><i class="bi bi-activity text-primary"></i> Estado del Sistema en Tiempo Real</h2>
         <h4 class="text-secondary mt-3">Balanceo de Carga</h4>
@@ -242,7 +280,7 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
                     <div class="display-1 text-primary mb-3">
                         <i class="bi bi-server"></i>
                     </div>
-                    <!-- Variable que imprime 'app-01' o 'app-02'. -->
+                    <!-- Imprime el hostname del servidor actual (app-01 o app-02). -->
                     <h1 class="fw-bold mb-0">{{ app_actual }}</h1>
                     <p class="text-muted mt-2">Atendiendo tu sesión actual</p>
                 </div>
@@ -262,7 +300,7 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
                     <div class="display-1 text-success mb-3">
                         <i class="bi bi-hdd-network"></i>
                     </div>
-                    <!-- Variable que imprime 'db-01' o 'db-02' consultando vía SQL. -->
+                    <!-- Imprime el hostname de la BD consultado vía SQL (db-01 o db-02). -->
                     <h1 class="fw-bold mb-0">{{ db_actual }}</h1>
                     <p class="text-muted mt-2">Base de datos respondiendo</p>
                 </div>
@@ -274,17 +312,16 @@ PLANTILLA: templates/estado.html (Panel de Diagnóstico)
     </div>
 
     <div class="text-center mt-5">
-        <!-- Botón que recarga la misma URL para forzar un nuevo balanceo o failover. -->
+        <!-- Botón que recarga la página para forzar un nuevo balanceo. -->
         <a href="{{ url_for('estado_sistema') }}" class="btn btn-primary btn-lg px-5 shadow">
             <i class="bi bi-arrow-clockwise"></i> Recargar Panel de Estado
         </a>
-        <!-- Nota técnica simplificada con el texto exacto solicitado. -->
+        <!-- Nota informativa. -->
         <p class="text-muted mt-4 small mx-auto" style="max-width: 700px;">
             <i class="bi bi-info-circle"></i> <strong>Nota técnica:</strong> Si este servidor llegara a fallar, HAProxy te redirigirá automáticamente al otro nodo para mantener la aplicación en línea.
         </p>
     </div>
 </main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
@@ -297,11 +334,8 @@ PLANTILLA: templates/index.html (Formulario de Registro)
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
     <title>VetSystem - Registrar</title>
-    <!-- Bootstrap CSS. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -325,7 +359,7 @@ PLANTILLA: templates/index.html (Formulario de Registro)
 </nav>
 
 <main class="container my-4">
-    <!-- Muestra los mensajes flash de éxito o error enviados por Flask. -->
+    <!-- Mensajes flash. -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -338,875 +372,61 @@ PLANTILLA: templates/index.html (Formulario de Registro)
 
     <h2 class="mb-3"><i class="bi bi-clipboard-plus text-primary"></i> Registrar nuevo paciente</h2>
 
-    <!-- Formulario que envía los datos a la ruta /registrar por método POST. -->
+    <!-- Formulario principal. -->
     <form class="card p-4 shadow-sm border-0" method="POST" action="/registrar">
-        <!-- Título de sección de datos del dueño. -->
+        
+        <!-- Sección: Datos del dueño. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
         <div class="row g-3 mb-4 mt-1">
-            <!-- Campo de nombre del dueño (obligatorio). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="owner_name" required></div>
-            <!-- Campo de teléfono del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" class="form-control" name="owner_phone"></div>
-            <!-- Campo de email del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
                 <input type="email" class="form-control" name="owner_email"></div>
-            <!-- Campo de dirección del dueño. -->
             <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
                 <input type="text" class="form-control" name="owner_address"></div>
         </div>
 
-        <!-- Título de sección de datos de la mascota. -->
+        <!-- Sección: Datos de la mascota. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
         <div class="row g-3 mb-4 mt-1">
-            <!-- Campo de nombre de la mascota (obligatorio). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
                 <input type="text" class="form-control" name="pet_name" required></div>
-            <!-- Campo de especie como texto libre (permite cualquier animal). -->
             <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <input type="text" class="form-control" name="pet_species" placeholder="Ej: Perro, Gato, Loro, Iguana..."></div>
-            <!-- Campo de raza. -->
+                <input type="text" class="form-control" name="pet_species" placeholder="Ej: Perro, Gato, Loro..."></div>
             <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
                 <input type="text" class="form-control" name="pet_breed"></div>
-            <!-- Campo de edad. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
                 <input type="number" class="form-control" name="pet_age"></div>
-            <!-- Campo de peso. -->
             <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
                 <input type="number" step="0.01" class="form-control" name="pet_weight"></div>
         </div>
 
-        <!-- Título de sección de cita. -->
+        <!-- Sección: Cita. -->
         <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Fecha y Motivo de la Cita</h5>
         <div class="row g-3 mb-4 mt-1">
-            <!-- Campo para seleccionar fecha y hora con el calendario del navegador. -->
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Fecha y Hora *</label>
+                <!-- input type datetime-local muestra el calendario nativo del navegador. -->
                 <input type="datetime-local" class="form-control" name="appointment_date" required>
             </div>
-            <!-- Campo del motivo de la cita. -->
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Motivo *</label>
                 <input type="text" class="form-control" name="reason" required>
             </div>
         </div>
-        <!-- Campo de diagnóstico opcional. -->
         <div class="mb-3">
-            <!-- Etiqueta modificada para mayor coherencia al momento del registro. -->
             <label class="form-label fw-semibold">Observaciones / Notas Iniciales (opcional)</label>
             <textarea class="form-control" name="diagnosis" rows="2"></textarea>
         </div>
 
-        <!-- Botón de envío del formulario. -->
+        <!-- Botón de envío. -->
         <div class="d-flex gap-2 border-top pt-3">
             <button class="btn btn-primary px-4" type="submit"><i class="bi bi-save"></i> Guardar Paciente</button>
         </div>
     </form>
 </main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/editar_paciente.html (Edición Completa)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Editar Paciente - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <!-- Enlace al panel de diagnóstico del sistema. -->
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <h2 class="mb-3"><i class="bi bi-pencil-square text-warning"></i> Editar Paciente #{{ pet.id }}</h2>
-
-    <!-- Formulario que envía los datos por POST a la misma URL actual. -->
-    <form class="card p-4 shadow-sm border-0" method="POST">
-        <!-- Título de sección de datos del dueño. -->
-        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-person"></i> Datos del dueño</h5>
-        <div class="row g-3 mb-4 mt-1">
-            <!-- Campo de nombre del dueño precargado con el valor actual. -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
-                <input type="text" class="form-control" name="owner_name" value="{{ owner.name }}" required></div>
-            <!-- Campo de teléfono precargado. Usa 'or ''' para evitar mostrar None. -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Teléfono</label>
-                <input type="text" class="form-control" name="owner_phone" value="{{ owner.phone or '' }}"></div>
-            <!-- Campo de email precargado. -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Email</label>
-                <input type="email" class="form-control" name="owner_email" value="{{ owner.email or '' }}"></div>
-            <!-- Campo de dirección precargado. -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Dirección</label>
-                <input type="text" class="form-control" name="owner_address" value="{{ owner.address or '' }}"></div>
-        </div>
-
-        <!-- Título de sección de datos de la mascota. -->
-        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-github"></i> Datos de la mascota</h5>
-        <div class="row g-3 mb-4 mt-1">
-            <!-- Campo de nombre de la mascota precargado. -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Nombre *</label>
-                <input type="text" class="form-control" name="pet_name" value="{{ pet.name }}" required></div>
-            <!-- Campo de especie precargado (texto libre). -->
-            <div class="col-md-6"><label class="form-label fw-semibold">Especie</label>
-                <input type="text" class="form-control" name="pet_species" value="{{ pet.species or '' }}" placeholder="Ej: Perro, Loro, Iguana..."></div>
-            <!-- Campo de raza precargado. -->
-            <div class="col-md-4"><label class="form-label fw-semibold">Raza</label>
-                <input type="text" class="form-control" name="pet_breed" value="{{ pet.breed or '' }}"></div>
-            <!-- Campo de edad precargado. -->
-            <div class="col-md-4"><label class="form-label fw-semibold">Edad</label>
-                <input type="number" class="form-control" name="pet_age" value="{{ pet.age or '' }}"></div>
-            <!-- Campo de peso precargado. -->
-            <div class="col-md-4"><label class="form-label fw-semibold">Peso</label>
-                <input type="number" step="0.01" class="form-control" name="pet_weight" value="{{ pet.weight or '' }}"></div>
-        </div>
-
-        <!-- Bloque condicional: solo muestra la sección de cita si existe una consulta asociada. -->
-        {% if consulta %}
-        <h5 class="text-primary border-bottom pb-2"><i class="bi bi-calendar-check"></i> Cita y Notas Médicas</h5>
-        <div class="row g-3 mb-4 mt-1">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Editar Fecha y Hora *</label>
-                <!-- Formatea la fecha al estándar que espera el input datetime-local. -->
-                <input type="datetime-local" class="form-control" name="appointment_date" value="{{ consulta.appointment_date.strftime('%Y-%m-%dT%H:%M') if consulta.appointment_date else '' }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Motivo de la Consulta</label>
-                <!-- Precarga el motivo actual. -->
-                <input type="text" class="form-control" name="reason" value="{{ consulta.reason or '' }}">
-            </div>
-            <div class="col-12">
-                <!-- Etiqueta modificada para mayor coherencia. -->
-                <label class="form-label fw-semibold">Observaciones / Diagnóstico</label>
-                <!-- Precarga el diagnóstico actual. -->
-                <textarea class="form-control" name="diagnosis" rows="3">{{ consulta.diagnosis or '' }}</textarea>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Botones de acción. -->
-        <div class="d-flex gap-2 border-top pt-3">
-            <button class="btn btn-warning px-4" type="submit"><i class="bi bi-save"></i> Guardar Cambios</button>
-            <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary">Cancelar</a>
-        </div>
-    </form>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/editar_bitacora.html (Edición de Nota)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Editar Nota - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Centra el formulario en la pantalla. -->
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm border-0">
-                <!-- Cabecera del formulario. -->
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Nota de Bitácora</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Envía los datos por POST a la ruta de editar_bitacora. -->
-                    <form method="POST">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Nota</label>
-                            <!-- Precarga el texto actual de la nota en el textarea. -->
-                            <textarea class="form-control" name="note" rows="5" required>{{ nota.note }}</textarea>
-                        </div>
-                        <!-- Botones de acción. -->
-                        <div class="d-flex gap-2 border-top pt-3">
-                            <button type="submit" class="btn btn-warning w-100"><i class="bi bi-save"></i> Guardar Cambios</button>
-                            <a href="{{ url_for('ver_paciente', id=nota.pet_id) }}" class="btn btn-outline-secondary w-100">Cancelar</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/ver_paciente.html (Ficha Clínica y Bitácora)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Ficha del Paciente - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Mensajes flash. -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <!-- Encabezado de la ficha. -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-file-medical text-info"></i> Ficha Clínica: {{ pet.name }}</h2>
-        <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a la lista</a>
-    </div>
-
-    <div class="row g-4">
-        <!-- Tarjeta con datos del dueño. -->
-        <div class="col-md-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-dark text-white"><i class="bi bi-person-badge"></i> Datos del Dueño</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Nombre:</strong> {{ owner.name }}</li>
-                        <!-- Usa 'or' para mostrar texto por defecto si el campo es nulo. -->
-                        <li class="list-group-item"><strong>Teléfono:</strong> {{ owner.phone or 'No registrado' }}</li>
-                        <li class="list-group-item"><strong>Email:</strong> {{ owner.email or 'No registrado' }}</li>
-                        <li class="list-group-item"><strong>Dirección:</strong> {{ owner.address or 'No registrada' }}</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tarjeta con datos de la mascota. -->
-        <div class="col-md-7">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-primary text-white"><i class="bi bi-github"></i> Datos de la Mascota</div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Especie</h6><h5>{{ pet.species or 'N/A' }}</h5></div>
-                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Raza</h6><h5>{{ pet.breed or 'N/A' }}</h5></div>
-                        <!-- El operador ~ concatena la edad con el texto 'años' si existe. -->
-                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Edad</h6><h5>{{ pet.age ~ ' años' if pet.age else 'N/A' }}</h5></div>
-                        <!-- Concatena el peso con 'kg' si existe. -->
-                        <div class="col-6 col-md-4 mb-3"><h6 class="text-muted">Peso</h6><h5>{{ pet.weight ~ ' kg' if pet.weight else 'N/A' }}</h5></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabla de historial de consultas. -->
-    <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-success text-white"><i class="bi bi-clock-history"></i> Historial de Consultas</div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <!-- Encabezado modificado para mayor coherencia. -->
-                    <tr><th>Fecha</th><th>Motivo de Consulta</th><th>Observaciones / Diagnóstico</th></tr>
-                </thead>
-                <tbody>
-                    <!-- Bucle que recorre las consultas. -->
-                    {% for c in consultas %}
-                    <tr>
-                        <!-- Comprueba si la fecha existe antes de formatearla. -->
-                        <td>
-                            {% if c.appointment_date %}
-                                {{ c.appointment_date.strftime('%d/%m/%Y %H:%M') }}
-                            {% else %}
-                                Sin fecha
-                            {% endif %}
-                        </td>
-                        <td>{{ c.reason }}</td>
-                        <td>{{ c.diagnosis or 'Sin diagnóstico registrado' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="3" class="text-center text-muted py-4">Esta mascota no tiene consultas registradas aún.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Sección de la Bitácora. -->
-    <div class="card shadow-sm border-0 mt-4">
-        <!-- Título de la tarjeta modificado a "Bitácora / Diagnóstico". -->
-        <div class="card-header bg-warning text-dark"><i class="bi bi-journal-text"></i> Bitácora / Diagnóstico</div>
-        <div class="card-body">
-            <!-- Muestra el formulario SOLO si can_add_note es verdadero. -->
-            {% if can_add_note %}
-            <form method="POST" action="{{ url_for('agregar_bitacora', id=pet.id) }}" class="mb-3">
-                <label class="form-label fw-semibold">Nueva nota</label>
-                <textarea class="form-control mb-2" name="note" rows="2" placeholder="Ej: Se aplicó vacuna antirrábica." required></textarea>
-                <button type="submit" class="btn btn-warning"><i class="bi bi-plus-circle"></i> Agregar Nota</button>
-            </form>
-            <hr>
-            {% endif %}
-
-            <!-- Lista de notas guardadas. -->
-            {% if bitacora %}
-            <div class="list-group">
-                {% for b in bitacora %}
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-muted"><i class="bi bi-person-circle"></i> <strong>{{ b.author }}</strong></small>
-                        <div>
-                            <small class="text-muted me-2"><i class="bi bi-clock"></i> {{ b.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                            
-                            <!-- Muestra botones de editar/eliminar si el usuario es admin/sistemas o el autor de la nota. -->
-                            {% if session.get('role') in ['admin', 'sistemas'] or session.get('username') == b.author %}
-                            <a href="{{ url_for('editar_bitacora', id=b.id) }}" class="btn btn-sm btn-outline-warning py-0 px-2" title="Editar"><i class="bi bi-pencil"></i></a>
-                            <a href="{{ url_for('eliminar_bitacora', id=b.id) }}" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="return confirm('¿Eliminar esta nota?')" title="Eliminar"><i class="bi bi-trash"></i></a>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <p class="mb-0">{{ b.note }}</p>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-muted text-center py-3 mb-0">Aún no hay notas en la bitácora de este paciente.</p>
-            {% endif %}
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/pacientes.html (Lista de Pacientes)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Pacientes - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link active" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Mensajes flash. -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <h2 class="mb-4"><i class="bi bi-list-ul text-primary"></i> Lista de Pacientes</h2>
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>No.</th><th>Mascota</th><th>Especie</th><th>Dueño</th><th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Bucle que recorre la lista de pacientes. -->
-                    {% for pet, owner in pacientes %}
-                    <tr>
-                        <!-- loop.index genera la numeración 1, 2, 3... -->
-                        <td class="text-muted">#{{ loop.index }}</td>
-                        <td><i class="bi bi-github text-primary"></i> <strong>{{ pet.name }}</strong></td>
-                        <td>{{ pet.species }}</td>
-                        <td>{{ owner.name }}</td>
-                        <td class="text-end">
-                            <!-- Botones de acción. -->
-                            <a href="{{ url_for('ver_paciente', id=pet.id) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-eye"></i> Ver</a>
-                            <a href="{{ url_for('editar_paciente', id=pet.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Editar</a>
-                            <!-- Solo admin y sistemas ven el botón eliminar. -->
-                            {% if session.get('role') in ['admin', 'sistemas'] %}
-                            <a href="{{ url_for('eliminar_paciente', id=pet.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar paciente?')"><i class="bi bi-trash"></i> Eliminar</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">No hay pacientes registrados.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/usuarios.html (Gestión de Usuarios)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Usuarios - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link active" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Mensajes flash. -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <div class="row">
-        <!-- Formulario para crear usuario. -->
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-primary text-white">Crear Nuevo Usuario</div>
-                <div class="card-body">
-                    <form method="POST" action="/usuarios">
-                        <div class="mb-2"><label>Usuario</label><input type="text" name="username" class="form-control" required></div>
-                        <div class="mb-2"><label>Contraseña</label><input type="password" name="password" class="form-control" required></div>
-                        <div class="mb-3">
-                            <label>Rol</label>
-                            <select name="role" class="form-select">
-                                <!-- Carga dinámicamente los roles desde la BD. -->
-                                {% for r in roles %}
-                                <option value="{{ r.name }}">{{ r.name|capitalize }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100">Guardar Usuario</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabla de usuarios registrados. -->
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white">Usuarios Registrados</div>
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead>
-                            <tr><th>No.</th><th>Usuario</th><th>Rol</th><th class="text-end">Acciones</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for u in usuarios %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ u.username }}</td>
-                                <td><span class="badge bg-info text-dark">{{ u.role }}</span></td>
-                                <td class="text-end">
-                                    <a href="{{ url_for('editar_usuario', id=u.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
-                                    <!-- Evita que el usuario se elimine a sí mismo. -->
-                                    {% if u.id != session.get('user_id') %}
-                                    <a href="{{ url_for('eliminar_usuario', id=u.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar a este usuario?')"><i class="bi bi-trash"></i></a>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/roles.html (Gestión de Roles)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Roles - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link active" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Mensajes flash. -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <h2 class="mb-4"><i class="bi bi-shield-lock text-primary"></i> Gestión de Roles y Permisos</h2>
-    <div class="row">
-        <!-- Formulario de creación de rol. -->
-        <div class="col-md-5">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-primary text-white">Crear Nuevo Rol</div>
-                <div class="card-body">
-                    <form method="POST" action="/roles">
-                        <div class="mb-3">
-                            <label>Nombre del Rol</label>
-                            <input type="text" name="role_name" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Permisos</label>
-                            <!-- Cada checkbox con name="permissions" enviará su value al backend. -->
-                            <div class="form-check"><input type="checkbox" name="permissions" value="ver_pacientes" class="form-check-input"> Ver Pacientes</div>
-                            <div class="form-check"><input type="checkbox" name="permissions" value="crear_pacientes" class="form-check-input"> Crear Pacientes</div>
-                            <div class="form-check"><input type="checkbox" name="permissions" value="editar_pacientes" class="form-check-input"> Editar Pacientes</div>
-                            <div class="form-check"><input type="checkbox" name="permissions" value="eliminar_pacientes" class="form-check-input"> Eliminar Pacientes</div>
-                            <div class="form-check"><input type="checkbox" name="permissions" value="gestionar_usuarios" class="form-check-input"> Gestionar Usuarios</div>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100">Guardar Rol</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabla de roles existentes. -->
-        <div class="col-md-7">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white">Roles Existentes</div>
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead><tr><th>No.</th><th>Rol</th><th>Permisos</th><th>Acciones</th></tr></thead>
-                        <tbody>
-                            {% for r in roles %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ r.name }}</td>
-                                <td><small>{{ r.permissions }}</small></td>
-                                <td>
-                                    <!-- Protege los roles base (admin y sistemas) de ser eliminados. -->
-                                    {% if r.name not in ['admin', 'sistemas'] %}
-                                    <a href="{{ url_for('eliminar_rol', id=r.id) }}" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></a>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/login.html (Inicio de Sesión)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Login - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Estilos personalizados para centrar el login. -->
-    <style>
-        body { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); min-height: 100vh; display: flex; align-items: center; }
-        .login-card { max-width: 400px; margin: auto; }
-    </style>
-</head>
-<body>
-    <!-- Tarjeta de login centrada. -->
-    <div class="card login-card shadow-lg border-0 rounded-4">
-        <div class="card-body p-5">
-            <div class="text-center mb-4">
-                <!-- Ícono y título. -->
-                <i class="bi bi-heart-pulse fs-1 text-primary"></i>
-                <h3 class="fw-bold mt-2">VetSystem</h3>
-            </div>
-            
-            <!-- Mensajes de error flash. -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} p-2 text-center">{{ message }}</div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
-            
-            <!-- Formulario que envía los datos a /login por POST. -->
-            <form method="POST" action="/login">
-                <div class="mb-3">
-                    <label class="form-label">Usuario</label>
-                    <input type="text" class="form-control" name="username" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Contraseña</label>
-                    <!-- El tipo password oculta los caracteres. -->
-                    <input type="password" class="form-control" name="password" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-            </form>
-        </div>
-    </div>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-═══════════════════════════════════════════════════════════════════════
-PLANTILLA: templates/editar_usuario.html (Edición de Usuario)
-═══════════════════════════════════════════════════════════════════════
-
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <!-- Título de la pestaña. -->
-    <title>Editar Usuario - VetSystem</title>
-    <!-- Bootstrap CSS. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons. -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<!-- Barra de navegación. -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}"><i class="bi bi-heart-pulse"></i> VetSystem</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{{ url_for('inicio') }}"><i class="bi bi-house"></i> Inicio</a>
-            <a class="nav-link" href="{{ url_for('registrar_paciente') }}"><i class="bi bi-plus-circle"></i> Registrar</a>
-            <a class="nav-link" href="{{ url_for('pacientes') }}"><i class="bi bi-list-ul"></i> Pacientes</a>
-            <a class="nav-link active" href="{{ url_for('usuarios') }}"><i class="bi bi-people"></i> Usuarios</a>
-            <a class="nav-link" href="{{ url_for('roles') }}"><i class="bi bi-shield-lock"></i> Roles</a>
-            <a class="nav-link" href="{{ url_for('estado_sistema') }}"><i class="bi bi-server"></i> Estado</a>
-        </div>
-        <div class="d-flex align-items-center text-white">
-            <span class="me-3"><i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Salir</a>
-        </div>
-    </div>
-</nav>
-
-<main class="container my-4">
-    <!-- Centra el formulario. -->
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <!-- Mensajes flash. -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} alert-dismissible fade show">{{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
-
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Usuario: {{ user.username }}</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Formulario de edición. -->
-                    <form method="POST">
-                        <div class="mb-3">
-                            <label>Nombre de Usuario</label>
-                            <!-- Precarga el nombre actual. -->
-                            <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Nueva Contraseña (dejar en blanco para mantener la actual)</label>
-                            <!-- No se precarga la contraseña por seguridad. -->
-                            <input type="password" name="password" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Rol</label>
-                            <select name="role" class="form-select">
-                                {% for r in roles %}
-                                <!-- Marca como 'selected' el rol actual del usuario. -->
-                                <option value="{{ r.name }}" {% if user.role == r.name %}selected{% endif %}>{{ r.name|capitalize }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="d-flex gap-2 border-top pt-3">
-                            <button type="submit" class="btn btn-warning w-100"><i class="bi bi-save"></i> Guardar Cambios</button>
-                            <a href="{{ url_for('usuarios') }}" class="btn btn-outline-secondary w-100">Cancelar</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-<!-- Script de Bootstrap necesario para que funcionen las alertas (botón X) y menús desplegables. -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
