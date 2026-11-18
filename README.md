@@ -49,7 +49,6 @@ Toda la documentación del proyecto vive en la carpeta [`Documentacion/`](Docume
 | [Guía de la aplicación](Documentacion/Guia_App.txt) | Código Flask (`app.py`) explicado línea por línea: modelos, decoradores, rutas, seguridad |
 | [Guía del proyecto](Documentacion/Guia_Proyecto.txt) | Instalación general: red, MySQL, replicación, HAProxy, UFW, Ngrok, rclone |
 | [Guía de configuración SSH](Documentacion/Guia_Configuracion_SSH.txt) | Instalación de SSH, firewall y conexión desde Windows |
-| [Guía del servidor](Documentacion/Guia_Servidor.txt) | Configuración del SO, systemd, UFW, respaldos y variables de entorno |
 
 ---
 
