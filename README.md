@@ -47,11 +47,9 @@ Toda la documentación del proyecto vive en la carpeta [`Documentacion/`](Docume
 | Guía | Contenido |
 |------|-----------|
 | [Guía de la aplicación](Documentacion/Guia_App.txt) | Código Flask (`app.py`) explicado línea por línea: modelos, decoradores, rutas, seguridad |
-| [Guía de plantillas HTML](Documentacion/Guia_Plantillas_HTML.txt) | Las 11 vistas Jinja2 explicadas: login, dashboard, formularios, tablas |
 | [Guía del proyecto](Documentacion/Guia_Proyecto.txt) | Instalación general: red, MySQL, replicación, HAProxy, UFW, Ngrok, rclone |
 | [Guía de configuración SSH](Documentacion/Guia_Configuracion_SSH.txt) | Instalación de SSH, firewall y conexión desde Windows |
-
-> 📌 Se agregará `Guia_Servidor.txt` con la documentación completa de configuración del sistema operativo y servicios (red, systemd, UFW, respaldos).
+| [Guía del servidor](Documentacion/Guia_Servidor.txt) | Configuración del SO, systemd, UFW, respaldos y variables de entorno |
 
 ---
 
