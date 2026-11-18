@@ -10,8 +10,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 # SQLAlchemy: El ORM que permite manejar la base de datos MySQL usando clases de Python.
 from flask_sqlalchemy import SQLAlchemy
-# Werkzeug: Utilidades de seguridad para verificar contraseñas antiguas.
-from werkzeug.security import check_password_hash
 # Argon2: Algoritmo de hashing seguro para contraseñas.
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
@@ -72,7 +70,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 # Inicializa SQLAlchemy.
 db = SQLAlchemy(app)
-# Inicializa el hasher de Argon2.
+# Inicializa el hasher de Argon2 (único método permitido).
 ph = PasswordHasher()
 
 # Decorador que se ejecuta al finalizar cada petición web.
@@ -131,24 +129,7 @@ class Bitacora(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 # ==============================================================================
-# 4. FUNCIÓN DE VERIFICACIÓN DE CONTRASEÑAS
-# ==============================================================================
-# Verifica la contraseña comprobando si es un hash de Argon2 o uno antiguo de Werkzeug.
-def verify_password(stored_hash, password):
-    # Si el hash comienza con "$argon2", significa que fue creado con el nuevo algoritmo.
-    if stored_hash.startswith('$argon2'):
-        try:
-            # Verifica la contraseña usando Argon2.
-            return ph.verify(stored_hash, password)
-        except (VerifyMismatchError, VerificationError, InvalidHashError):
-            # Si la contraseña no coincide o el hash es inválido, retorna False.
-            return False
-    else:
-        # Si es un hash antiguo, usa la verificación de Werkzeug.
-        return check_password_hash(stored_hash, password)
-
-# ==============================================================================
-# 5. DECORADORES DE SEGURIDAD Y PERMISOS
+# 4. DECORADORES DE SEGURIDAD Y PERMISOS
 # ==============================================================================
 def login_required(f):
     @wraps(f)
@@ -189,7 +170,7 @@ def _puede_agregar_nota():
     return False
 
 # ==============================================================================
-# 6. RUTAS DE LA APLICACIÓN
+# 5. RUTAS DE LA APLICACIÓN
 # ==============================================================================
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -199,18 +180,17 @@ def login():
         password = request.form['password']
         try:
             user = User.query.filter_by(username=username).first()
-            # Usa la función verify_password que soporta Argon2 y hashes antiguos.
-            if user and verify_password(user.password_hash, password):
-                # Migración transparente: si el hash es antiguo, lo actualiza a Argon2.
-                if not user.password_hash.startswith('$argon2'):
-                    user.password_hash = ph.hash(password)
-                    db.session.commit()
-                session['user_id'] = user.id
-                session['username'] = user.username
-                session['role'] = user.role
-                return redirect(url_for('inicio'))
-            else:
-                flash('Usuario o contraseña incorrectos', 'danger')
+            if user:
+                try:
+                    # Uso exclusivo de Argon2 para verificar contraseñas.
+                    if ph.verify(user.password_hash, password):
+                        session['user_id'] = user.id
+                        session['username'] = user.username
+                        session['role'] = user.role
+                        return redirect(url_for('inicio'))
+                except (VerifyMismatchError, VerificationError, InvalidHashError):
+                    pass
+            flash('Usuario o contraseña incorrectos', 'danger')
         except Exception:
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
@@ -517,7 +497,7 @@ def usuarios():
             username = request.form['username']
             password = request.form['password']
             role = request.form['role']
-            # Usa Argon2 para generar el hash seguro de la contraseña.
+            # Uso exclusivo de Argon2 para nuevos usuarios.
             hashed_pw = ph.hash(password)
             nuevo_user = User(username=username, password_hash=hashed_pw, role=role)
             db.session.add(nuevo_user)
@@ -555,7 +535,6 @@ def editar_usuario(id):
             user.role = request.form['role']
             new_password = request.form.get('password')
             if new_password:
-                # Usa Argon2 para el nuevo hash.
                 user.password_hash = ph.hash(new_password)
             db.session.commit()
             flash('Usuario actualizado!', 'success')
@@ -620,7 +599,7 @@ def eliminar_rol(id):
     return redirect(url_for('roles'))
 
 # ==============================================================================
-# 7. ARRANQUE DEL SERVIDOR
+# 6. ARRANQUE DEL SERVIDOR
 # ==============================================================================
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
