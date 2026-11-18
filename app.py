@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import check_password_hash
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from functools import wraps
@@ -92,15 +91,6 @@ class Bitacora(db.Model):
     note = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-def verify_password(stored_hash, password):
-    if stored_hash.startswith('$argon2'):
-        try:
-            return ph.verify(stored_hash, password)
-        except (VerifyMismatchError, VerificationError, InvalidHashError):
-            return False
-    else:
-        return check_password_hash(stored_hash, password)
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -146,16 +136,16 @@ def login():
         password = request.form['password']
         try:
             user = User.query.filter_by(username=username).first()
-            if user and verify_password(user.password_hash, password):
-                if not user.password_hash.startswith('$argon2'):
-                    user.password_hash = ph.hash(password)
-                    db.session.commit()
-                session['user_id'] = user.id
-                session['username'] = user.username
-                session['role'] = user.role
-                return redirect(url_for('inicio'))
-            else:
-                flash('Usuario o contraseña incorrectos', 'danger')
+            if user:
+                try:
+                    if ph.verify(user.password_hash, password):
+                        session['user_id'] = user.id
+                        session['username'] = user.username
+                        session['role'] = user.role
+                        return redirect(url_for('inicio'))
+                except (VerifyMismatchError, VerificationError, InvalidHashError):
+                    pass
+            flash('Usuario o contraseña incorrectos', 'danger')
         except Exception:
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
