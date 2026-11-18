@@ -89,16 +89,6 @@ class Bitacora(db.Model):
     note = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-with app.app_context():
-    try:
-        db.create_all()
-        if not User.query.filter_by(username='emerson_7').first():
-            admin_user = User(username='emerson_7', password_hash=generate_password_hash('P@ssw0rd'), role='admin')
-            db.session.add(admin_user)
-            db.session.commit()
-    except Exception as e:
-        print(f"Error al crear usuario inicial: {e}")
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
