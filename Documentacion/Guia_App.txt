@@ -10,6 +10,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 # SQLAlchemy: El ORM que permite manejar la base de datos MySQL usando clases de Python.
 from flask_sqlalchemy import SQLAlchemy
+# CSRFProtect: Extensión de Flask-WTF para proteger los formularios contra ataques CSRF.
+from flask_wtf.csrf import CSRFProtect
 # Argon2: Algoritmo de hashing seguro para contraseñas.
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
@@ -36,6 +38,8 @@ load_dotenv()
 # ==============================================================================
 # Inicializa la aplicación Flask con el nombre del módulo actual.
 app = Flask(__name__)
+# Inicializa la protección CSRF en toda la aplicación.
+csrf = CSRFProtect(app)
 
 # Clave secreta leída desde el .env.
 app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
@@ -70,7 +74,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 # Inicializa SQLAlchemy.
 db = SQLAlchemy(app)
-# Inicializa el hasher de Argon2 (único método permitido).
+# Inicializa el hasher de Argon2.
 ph = PasswordHasher()
 
 # Decorador que se ejecuta al finalizar cada petición web.
@@ -182,7 +186,6 @@ def login():
             user = User.query.filter_by(username=username).first()
             if user:
                 try:
-                    # Uso exclusivo de Argon2 para verificar contraseñas.
                     if ph.verify(user.password_hash, password):
                         session['user_id'] = user.id
                         session['username'] = user.username
@@ -195,7 +198,8 @@ def login():
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
 
-@app.route('/logout')
+# El logout ahora es por POST para evitar que un enlace malicioso cierre la sesión.
+@app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     return redirect(url_for('login'))
@@ -402,7 +406,8 @@ def editar_paciente(id):
     return render_template('editar_paciente.html', pet=pet, owner=owner,
                            consulta=consulta, hostname=socket.gethostname())
 
-@app.route('/paciente/eliminar/<int:id>')
+# Las rutas de eliminación ahora son POST.
+@app.route('/paciente/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('eliminar_pacientes')
 def eliminar_paciente(id):
@@ -470,7 +475,8 @@ def editar_bitacora(id):
             flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_bitacora.html', nota=nota, hostname=socket.gethostname())
 
-@app.route('/bitacora/eliminar/<int:id>')
+# Las rutas de eliminación ahora son POST.
+@app.route('/bitacora/eliminar/<int:id>', methods=['POST'])
 @login_required
 def eliminar_bitacora(id):
     nota = Bitacora.query.get_or_404(id)
@@ -497,7 +503,6 @@ def usuarios():
             username = request.form['username']
             password = request.form['password']
             role = request.form['role']
-            # Uso exclusivo de Argon2 para nuevos usuarios.
             hashed_pw = ph.hash(password)
             nuevo_user = User(username=username, password_hash=hashed_pw, role=role)
             db.session.add(nuevo_user)
@@ -544,7 +549,8 @@ def editar_usuario(id):
             flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_usuario.html', user=user, roles=lista_roles, hostname=socket.gethostname())
 
-@app.route('/usuario/eliminar/<int:id>')
+# Las rutas de eliminación ahora son POST.
+@app.route('/usuario/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('gestionar_usuarios')
 def eliminar_usuario(id):
@@ -581,7 +587,8 @@ def roles():
     lista_roles = Role.query.all()
     return render_template('roles.html', roles=lista_roles, hostname=socket.gethostname())
 
-@app.route('/rol/eliminar/<int:id>')
+# Las rutas de eliminación ahora son POST.
+@app.route('/rol/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('gestionar_usuarios')
 def eliminar_rol(id):
