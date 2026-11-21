@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from functools import wraps
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+csrf = CSRFProtect(app)
 
 app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -150,7 +152,7 @@ def login():
             flash('Error de conexión a la base de datos.', 'danger')
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     return redirect(url_for('login'))
@@ -357,7 +359,7 @@ def editar_paciente(id):
     return render_template('editar_paciente.html', pet=pet, owner=owner,
                            consulta=consulta, hostname=socket.gethostname())
 
-@app.route('/paciente/eliminar/<int:id>')
+@app.route('/paciente/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('eliminar_pacientes')
 def eliminar_paciente(id):
@@ -425,7 +427,7 @@ def editar_bitacora(id):
             flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_bitacora.html', nota=nota, hostname=socket.gethostname())
 
-@app.route('/bitacora/eliminar/<int:id>')
+@app.route('/bitacora/eliminar/<int:id>', methods=['POST'])
 @login_required
 def eliminar_bitacora(id):
     nota = Bitacora.query.get_or_404(id)
@@ -498,7 +500,7 @@ def editar_usuario(id):
             flash(f'Error al actualizar: {str(e)}', 'danger')
     return render_template('editar_usuario.html', user=user, roles=lista_roles, hostname=socket.gethostname())
 
-@app.route('/usuario/eliminar/<int:id>')
+@app.route('/usuario/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('gestionar_usuarios')
 def eliminar_usuario(id):
@@ -535,7 +537,7 @@ def roles():
     lista_roles = Role.query.all()
     return render_template('roles.html', roles=lista_roles, hostname=socket.gethostname())
 
-@app.route('/rol/eliminar/<int:id>')
+@app.route('/rol/eliminar/<int:id>', methods=['POST'])
 @login_required
 @permission_required('gestionar_usuarios')
 def eliminar_rol(id):
